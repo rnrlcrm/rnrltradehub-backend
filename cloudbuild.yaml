@@ -1,15 +1,20 @@
+options:
+  logging: CLOUD_LOGGING_ONLY
+
 steps:
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', 'gcr.io/google-mpf-cas7ishusxmu/rnrltadehub-nonprod', '.']
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['push', 'gcr.io/google-mpf-cas7ishusxmu/rnrltadehub-nonprod']
-- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-  args:
-    - run
-    - services
-    - deploy
-    - rnrltadehub-nonprod
-    - --image=gcr.io/google-mpf-cas7ishusxmu/rnrltadehub-nonprod
-    - --region=us-central1
-    - --platform=managed
-    - --allow-unauthenticated
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/google-mpf-cas7ishusxmu/rnrltradehub-nonprod', '.']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/google-mpf-cas7ishusxmu/rnrltradehub-nonprod']
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    args:
+      - run
+      - services
+      - deploy
+      - rnrltradehub-nonprod
+      - --image=gcr.io/google-mpf-cas7ishusxmu/rnrltradehub-nonprod
+      - --region=us-central1
+      - --platform=managed
+      - --allow-unauthenticated
