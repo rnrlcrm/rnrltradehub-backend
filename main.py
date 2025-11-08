@@ -1,13 +1,11 @@
-ffrom fastapi import FastAPI
+import os
+import uvicorn
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI()
+app = FastAPI(title="RNRL TradeHub NonProd API")
 
-# 👇 Replace this URL with your actual frontend Cloud Run URL once it's deployed
-origins = [
-    "https://rnrltradehub-frontend-nonprod-<projectid>.us-central1.run.app",
-    "https://rnrltradehub-nonprod-502095789065.us-central1.run.app"
-]
+origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -21,3 +19,6 @@ app.add_middleware(
 async def root():
     return {"message": "RNRL TradeHub NonProd API is running!"}
 
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run(app, host="0.0.0.0", port=port)
