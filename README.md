@@ -23,6 +23,7 @@ This is a **production-ready, ERP-grade backend** with **complete compliance and
 ### Technical Stack
 - ✅ FastAPI framework for high-performance async API
 - ✅ PostgreSQL database with SQLAlchemy ORM
+- ✅ **Service layer architecture** - Business logic separation
 - ✅ Pydantic for request/response validation
 - ✅ Bcrypt password hashing
 - ✅ Cloud storage ready (GCS/S3)
@@ -102,6 +103,7 @@ This is a **production-ready, ERP-grade backend** with **complete compliance and
 | **System Config** | **4** | **Configuration management (NEW)** |
 
 **See [API_ENDPOINTS.md](API_ENDPOINTS.md) for complete API reference.**
+**See [SERVICE_LAYER.md](SERVICE_LAYER.md) for business logic architecture.**
 
 ## 🏁 Quick Start
 

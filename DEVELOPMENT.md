@@ -160,6 +160,56 @@ The application binds to `0.0.0.0` to allow external access, which is required f
 - In production, use connection pooling and SSL
 - Implement proper password hashing (bcrypt is included)
 
+## Architecture
+
+### Service Layer Pattern
+
+This project uses a **service layer architecture** that separates business logic from route handlers:
+
+```
+Routes (HTTP) → Services (Business Logic) → Models (Database)
+```
+
+#### Benefits:
+- **Separation of Concerns**: Routes handle HTTP, services handle business logic
+- **Reusability**: Business logic can be reused across different endpoints
+- **Testability**: Services can be unit tested independently
+- **Maintainability**: Business rules are centralized in one place
+
+#### Service Modules:
+
+1. **BusinessPartnerService** (`services/business_partner_service.py`)
+   - BP code uniqueness validation
+   - Status management
+   - Active contract checking
+   - Search and filtering logic
+
+2. **SalesContractService** (`services/sales_contract_service.py`)
+   - Contract number generation
+   - Status workflow management
+   - Amendment logic (version control)
+   - Cancellation validation
+
+3. **FinancialService** (`services/financial_service.py`)
+   - Invoice number generation
+   - Payment processing logic
+   - Commission calculations
+   - Outstanding balance tracking
+
+4. **UserService** (`services/user_service.py`)
+   - Password hashing and verification
+   - Email uniqueness validation
+   - Role-based access control
+   - Permission checking
+
+5. **ComplianceService** (`services/compliance_service.py`)
+   - GDPR data export/deletion
+   - Consent management
+   - Data retention policies
+   - Security event logging
+
+**See [SERVICE_LAYER.md](SERVICE_LAYER.md) for detailed documentation and examples.**
+
 ## Docker Build
 
 ```bash
