@@ -181,3 +181,96 @@ Rate limiting will be implemented to prevent abuse:
 - Per-user limits: 1000 requests/hour
 - Per-IP limits: 100 requests/minute
 - Burst allowance: 20 requests/second
+
+## File Storage & Document Management
+
+### Documents
+- `POST /api/documents/` - Upload/create document record
+- `GET /api/documents/` - List documents (filter: `?entity_type=business_partner&entity_id=123&document_type=PAN`)
+- `GET /api/documents/{id}` - Get document details
+- `DELETE /api/documents/{id}` - Soft delete document
+
+## Email System
+
+### Email Templates
+- `POST /api/email-templates/` - Create email template
+- `GET /api/email-templates/` - List templates (filter: `?category=notification&is_active=true`)
+- `GET /api/email-templates/{id}` - Get template
+- `PUT /api/email-templates/{id}` - Update template
+
+### Email Logs
+- `GET /api/email-logs/` - List sent emails (filter: `?status=sent`)
+- `GET /api/email-logs/{id}` - Get email log details
+
+## Compliance & GDPR
+
+### Data Retention Policies
+- `POST /api/retention-policies/` - Create retention policy
+- `GET /api/retention-policies/` - List policies
+- `GET /api/retention-policies/{id}` - Get policy
+- `PUT /api/retention-policies/{id}` - Update policy
+
+### Data Access Logs
+- `POST /api/access-logs/` - Log data access
+- `GET /api/access-logs/` - List access logs (filter: `?user_id=1&entity_type=sales_contract&action=view`)
+
+### Consent Records (GDPR)
+- `POST /api/consent-records/` - Create consent record
+- `GET /api/consent-records/` - List consents (filter: `?user_id=1&consent_type=data_processing`)
+- `PUT /api/consent-records/{id}/withdraw` - Withdraw consent
+
+### Data Export Requests (GDPR)
+- `POST /api/data-export-requests/` - Create export/deletion request
+- `GET /api/data-export-requests/` - List requests (filter: `?status=pending&request_type=export`)
+- `GET /api/data-export-requests/{id}` - Get request status
+
+## Security Management
+
+### Security Events
+- `POST /api/security-events/` - Log security event
+- `GET /api/security-events/` - List events (filter: `?severity=high&resolved=false`)
+- `PUT /api/security-events/{id}/resolve` - Mark event as resolved
+
+## System Configuration
+
+### System Configurations
+- `POST /api/system-config/` - Create configuration
+- `GET /api/system-config/` - List configurations (filter: `?category=storage&is_active=true`)
+- `GET /api/system-config/{key}` - Get configuration by key
+- `PUT /api/system-config/{key}` - Update configuration
+
+## Total API Endpoints
+
+**Updated Total: 180+ endpoints**
+
+- Core Business: 40 endpoints
+- Financial: 20 endpoints
+- User & Access: 10 endpoints
+- System Config: 25 endpoints
+- **File Storage: 4 endpoints (NEW)**
+- **Email System: 7 endpoints (NEW)**
+- **Compliance & GDPR: 14 endpoints (NEW)**
+- **Security: 3 endpoints (NEW)**
+- **System Configuration: 4 endpoints (NEW)**
+
+## Compliance Features
+
+### GDPR Compliance
+- Right to access (data export requests)
+- Right to erasure (data deletion requests)
+- Consent management
+- Data access logging
+- Retention policies
+
+### Security & Audit
+- Full audit trail on all tables
+- Security event logging
+- Data access tracking
+- Failed login attempts
+- Suspicious activity monitoring
+
+### Data Retention
+- Configurable retention periods per entity
+- Automatic archiving
+- Automatic deletion
+- Legal/business/regulatory policies

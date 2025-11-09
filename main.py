@@ -34,7 +34,16 @@ from routes_complete import (
     master_data_router,
     gst_rate_router,
     location_router,
-    commission_structure_router
+    commission_structure_router,
+    document_router,
+    email_template_router,
+    email_log_router,
+    retention_policy_router,
+    access_log_router,
+    consent_router,
+    export_request_router,
+    security_event_router,
+    sys_config_router
 )
 
 # Configure logging
@@ -85,6 +94,25 @@ app.include_router(master_data_router)
 app.include_router(gst_rate_router)
 app.include_router(location_router)
 app.include_router(commission_structure_router)
+
+# File Storage & Documents
+app.include_router(document_router)
+
+# Email System
+app.include_router(email_template_router)
+app.include_router(email_log_router)
+
+# Compliance & GDPR
+app.include_router(retention_policy_router)
+app.include_router(access_log_router)
+app.include_router(consent_router)
+app.include_router(export_request_router)
+
+# Security
+app.include_router(security_event_router)
+
+# System Configuration
+app.include_router(sys_config_router)
 
 
 @app.get("/")

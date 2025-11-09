@@ -420,3 +420,203 @@ The schema is designed to support:
 - Workflow/approval states
 - Document attachments
 - Activity logging beyond audit trail
+
+## File Storage & Document Management
+
+### Documents (`documents`)
+
+Document/file storage with access control.
+
+**Columns:**
+- `id` (VARCHAR(36), PK): UUID
+- `entity_type` (VARCHAR(100)): Related entity type
+- `entity_id` (VARCHAR(36)): Related entity ID
+- `document_type` (VARCHAR(100)): Document category (PAN, GST, Invoice, etc.)
+- `file_name` (VARCHAR(500)): Original filename
+- `file_size` (INTEGER): Size in bytes
+- `file_type` (VARCHAR(100)): MIME type
+- `storage_path` (VARCHAR(1000)): Cloud storage path
+- `storage_url` (VARCHAR(1000)): Signed/public URL
+- `uploaded_by` (INTEGER, FK): User who uploaded
+- `description` (TEXT): Description
+- `is_active` (BOOLEAN): Soft delete flag
+- `is_public` (BOOLEAN): Public access flag
+- `metadata` (JSON): Additional metadata
+- `created_at`, `updated_at` (TIMESTAMP)
+
+## Email System
+
+### Email Templates (`email_templates`)
+
+Templates for automated emails.
+
+**Columns:**
+- `id` (INTEGER, PK)
+- `name` (VARCHAR(255), UNIQUE): Template name
+- `category` (VARCHAR(100)): notification, alert, report
+- `subject` (VARCHAR(500)): Email subject
+- `body_html` (TEXT): HTML template
+- `body_text` (TEXT): Plain text fallback
+- `variables` (JSON): Template variables
+- `is_active` (BOOLEAN)
+- `description` (TEXT)
+- `created_at`, `updated_at` (TIMESTAMP)
+
+### Email Logs (`email_logs`)
+
+Log of sent emails.
+
+**Columns:**
+- `id` (INTEGER, PK)
+- `template_id` (INTEGER, FK)
+- `recipient` (VARCHAR(500))
+- `cc` (VARCHAR(1000))
+- `bcc` (VARCHAR(1000))
+- `subject` (VARCHAR(500))
+- `body` (TEXT)
+- `status` (ENUM): pending, sent, failed, bounced
+- `sent_at` (TIMESTAMP)
+- `error_message` (TEXT)
+- `metadata` (JSON)
+- `created_at`, `updated_at` (TIMESTAMP)
+
+## Compliance & GDPR
+
+### Data Retention Policies (`data_retention_policies`)
+
+Retention policies per entity type.
+
+**Columns:**
+- `id` (INTEGER, PK)
+- `entity_type` (VARCHAR(100), UNIQUE): Entity to apply policy to
+- `retention_days` (INTEGER): Days to retain
+- `archive_after_days` (INTEGER): When to archive
+- `delete_after_days` (INTEGER): When to delete
+- `policy_type` (VARCHAR(100)): legal, business, regulatory
+- `description` (TEXT)
+- `is_active` (BOOLEAN)
+- `created_at`, `updated_at` (TIMESTAMP)
+
+### Data Access Logs (`data_access_logs`)
+
+GDPR-compliant access logging.
+
+**Columns:**
+- `id` (INTEGER, PK)
+- `user_id` (INTEGER, FK)
+- `entity_type` (VARCHAR(100))
+- `entity_id` (VARCHAR(100))
+- `action` (VARCHAR(100)): view, export, modify, delete
+- `ip_address` (VARCHAR(50))
+- `user_agent` (VARCHAR(500))
+- `accessed_at` (TIMESTAMP)
+- `purpose` (TEXT): Why data was accessed
+- `metadata` (JSON)
+- `created_at`, `updated_at` (TIMESTAMP)
+
+### Consent Records (`consent_records`)
+
+User consent tracking (GDPR).
+
+**Columns:**
+- `id` (INTEGER, PK)
+- `user_id` (INTEGER, FK)
+- `business_partner_id` (VARCHAR(36), FK)
+- `consent_type` (VARCHAR(100)): data_processing, marketing, third_party
+- `consent_given` (BOOLEAN)
+- `consent_date` (TIMESTAMP)
+- `withdrawn_date` (TIMESTAMP)
+- `ip_address` (VARCHAR(50))
+- `metadata` (JSON)
+- `created_at`, `updated_at` (TIMESTAMP)
+
+### Data Export Requests (`data_export_requests`)
+
+GDPR right to access/erasure.
+
+**Columns:**
+- `id` (VARCHAR(36), PK): UUID
+- `user_id` (INTEGER, FK)
+- `business_partner_id` (VARCHAR(36), FK)
+- `request_type` (VARCHAR(100)): export, deletion
+- `status` (ENUM): pending, processing, completed, failed
+- `requested_at` (TIMESTAMP)
+- `completed_at` (TIMESTAMP)
+- `export_file_path` (VARCHAR(1000))
+- `metadata` (JSON)
+- `created_at`, `updated_at` (TIMESTAMP)
+
+## Security Management
+
+### Security Events (`security_events`)
+
+Security incident logging.
+
+**Columns:**
+- `id` (INTEGER, PK)
+- `event_type` (VARCHAR(100)): login_failed, access_denied, suspicious_activity
+- `severity` (ENUM): low, medium, high, critical
+- `user_id` (INTEGER, FK)
+- `ip_address` (VARCHAR(50))
+- `user_agent` (VARCHAR(500))
+- `description` (TEXT)
+- `occurred_at` (TIMESTAMP)
+- `resolved` (BOOLEAN)
+- `resolved_at` (TIMESTAMP)
+- `metadata` (JSON)
+- `created_at`, `updated_at` (TIMESTAMP)
+
+### System Configurations (`system_configurations`)
+
+System-wide configuration.
+
+**Columns:**
+- `id` (INTEGER, PK)
+- `config_key` (VARCHAR(255), UNIQUE)
+- `config_value` (TEXT)
+- `config_type` (VARCHAR(50)): string, json, encrypted
+- `category` (VARCHAR(100)): storage, email, security, compliance
+- `is_encrypted` (BOOLEAN)
+- `is_sensitive` (BOOLEAN)
+- `description` (TEXT)
+- `is_active` (BOOLEAN)
+- `created_at`, `updated_at` (TIMESTAMP)
+
+## Updated Table Count
+
+**Total: 26 Tables**
+
+Previously: 16 tables
+**New additions: 10 tables**
+
+1. documents
+2. email_templates
+3. email_logs
+4. data_retention_policies
+5. data_access_logs
+6. consent_records
+7. data_export_requests
+8. security_events
+9. system_configurations
+
+## Compliance Features Summary
+
+### GDPR Compliance
+✅ Right to access (data export)
+✅ Right to erasure (data deletion)
+✅ Consent management
+✅ Data access logging
+✅ Data retention policies
+
+### Security Features
+✅ Security event logging
+✅ Failed login tracking
+✅ Access control logging
+✅ Suspicious activity detection
+
+### Audit Trail
+✅ Timestamps on all tables (TimestampMixin)
+✅ Dedicated audit_logs table
+✅ Data access logs
+✅ Security event logs
+✅ Email logs

@@ -395,3 +395,170 @@ class Setting(Base, TimestampMixin):
     description = Column(Text)
     is_public = Column(Boolean, default=False)  # Whether setting can be viewed by non-admins
     is_editable = Column(Boolean, default=True)  # Whether setting can be modified via UI
+
+
+class Document(Base, TimestampMixin):
+    """Document/file storage table for managing uploaded files."""
+
+    __tablename__ = "documents"
+
+    id = Column(String(36), primary_key=True)
+    entity_type = Column(String(100), nullable=False, index=True)  # e.g., 'business_partner', 'sales_contract'
+    entity_id = Column(String(36), nullable=False, index=True)  # ID of the related entity
+    document_type = Column(String(100), nullable=False)  # e.g., 'PAN', 'GST', 'Invoice', 'Contract'
+    file_name = Column(String(500), nullable=False)
+    file_size = Column(Integer)  # Size in bytes
+    file_type = Column(String(100))  # MIME type
+    storage_path = Column(String(1000), nullable=False)  # Cloud storage path (GCS/S3)
+    storage_url = Column(String(1000))  # Public/signed URL
+    uploaded_by = Column(Integer, ForeignKey('users.id'))
+    description = Column(Text)
+    is_active = Column(Boolean, default=True)
+    is_public = Column(Boolean, default=False)
+    metadata = Column(JSON)  # Additional file metadata
+
+
+class EmailTemplate(Base, TimestampMixin):
+    """Email templates for automated notifications."""
+
+    __tablename__ = "email_templates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), unique=True, nullable=False, index=True)
+    category = Column(String(100), nullable=False, index=True)  # 'notification', 'alert', 'report'
+    subject = Column(String(500), nullable=False)
+    body_html = Column(Text, nullable=False)  # HTML template
+    body_text = Column(Text)  # Plain text fallback
+    variables = Column(JSON)  # List of template variables
+    is_active = Column(Boolean, default=True)
+    description = Column(Text)
+
+
+class EmailLog(Base, TimestampMixin):
+    """Email log for tracking sent emails."""
+
+    __tablename__ = "email_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    template_id = Column(Integer, ForeignKey('email_templates.id'))
+    recipient = Column(String(500), nullable=False)
+    cc = Column(String(1000))
+    bcc = Column(String(1000))
+    subject = Column(String(500), nullable=False)
+    body = Column(Text)
+    status = Column(
+        Enum('pending', 'sent', 'failed', 'bounced', name='email_status'),
+        default='pending',
+        nullable=False,
+        index=True
+    )
+    sent_at = Column(DateTime)
+    error_message = Column(Text)
+    metadata = Column(JSON)  # Additional tracking data
+
+
+class DataRetentionPolicy(Base, TimestampMixin):
+    """Data retention policies for compliance."""
+
+    __tablename__ = "data_retention_policies"
+
+    id = Column(Integer, primary_key=True, index=True)
+    entity_type = Column(String(100), unique=True, nullable=False, index=True)
+    retention_days = Column(Integer, nullable=False)  # How long to keep data
+    archive_after_days = Column(Integer)  # When to archive
+    delete_after_days = Column(Integer)  # When to permanently delete
+    policy_type = Column(String(100), nullable=False)  # 'legal', 'business', 'regulatory'
+    description = Column(Text)
+    is_active = Column(Boolean, default=True)
+
+
+class DataAccessLog(Base, TimestampMixin):
+    """Access logs for sensitive data (GDPR/compliance)."""
+
+    __tablename__ = "data_access_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    entity_type = Column(String(100), nullable=False, index=True)
+    entity_id = Column(String(100), nullable=False, index=True)
+    action = Column(String(100), nullable=False)  # 'view', 'export', 'modify', 'delete'
+    ip_address = Column(String(50))
+    user_agent = Column(String(500))
+    accessed_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    purpose = Column(Text)  # Why the data was accessed
+    metadata = Column(JSON)
+
+
+class ConsentRecord(Base, TimestampMixin):
+    """User consent records for GDPR compliance."""
+
+    __tablename__ = "consent_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id'))
+    business_partner_id = Column(String(36), ForeignKey('business_partners.id'))
+    consent_type = Column(String(100), nullable=False)  # 'data_processing', 'marketing', 'third_party'
+    consent_given = Column(Boolean, default=False)
+    consent_date = Column(DateTime, nullable=False)
+    withdrawn_date = Column(DateTime)
+    ip_address = Column(String(50))
+    metadata = Column(JSON)
+
+
+class DataExportRequest(Base, TimestampMixin):
+    """GDPR data export requests."""
+
+    __tablename__ = "data_export_requests"
+
+    id = Column(String(36), primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'))
+    business_partner_id = Column(String(36), ForeignKey('business_partners.id'))
+    request_type = Column(String(100), nullable=False)  # 'export', 'deletion'
+    status = Column(
+        Enum('pending', 'processing', 'completed', 'failed', name='export_status'),
+        default='pending',
+        nullable=False,
+        index=True
+    )
+    requested_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    completed_at = Column(DateTime)
+    export_file_path = Column(String(1000))
+    metadata = Column(JSON)
+
+
+class SecurityEvent(Base, TimestampMixin):
+    """Security events and incidents log."""
+
+    __tablename__ = "security_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    event_type = Column(String(100), nullable=False, index=True)  # 'login_failed', 'access_denied', 'suspicious_activity'
+    severity = Column(
+        Enum('low', 'medium', 'high', 'critical', name='severity_level'),
+        nullable=False,
+        index=True
+    )
+    user_id = Column(Integer, ForeignKey('users.id'))
+    ip_address = Column(String(50))
+    user_agent = Column(String(500))
+    description = Column(Text, nullable=False)
+    occurred_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    resolved = Column(Boolean, default=False)
+    resolved_at = Column(DateTime)
+    metadata = Column(JSON)
+
+
+class SystemConfiguration(Base, TimestampMixin):
+    """System configuration for encryption, storage, etc."""
+
+    __tablename__ = "system_configurations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    config_key = Column(String(255), unique=True, nullable=False, index=True)
+    config_value = Column(Text)
+    config_type = Column(String(50), default='string')  # 'string', 'json', 'encrypted'
+    category = Column(String(100), nullable=False, index=True)  # 'storage', 'email', 'security', 'compliance'
+    is_encrypted = Column(Boolean, default=False)
+    is_sensitive = Column(Boolean, default=False)
+    description = Column(Text)
+    is_active = Column(Boolean, default=True)

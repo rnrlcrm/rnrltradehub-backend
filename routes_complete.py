@@ -447,3 +447,402 @@ def create_commission_structure(data: dict, db: Session = Depends(get_db)):
 def list_commission_structures(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """List all commission structures."""
     return db.query(models.CommissionStructure).offset(skip).limit(limit).all()
+
+
+# ========== Document/File Storage Endpoints ==========
+document_router = APIRouter(prefix="/api/documents", tags=["Documents & Files"])
+
+@document_router.post("/", status_code=status.HTTP_201_CREATED)
+def create_document(document_data: dict, db: Session = Depends(get_db)):
+    """Create a new document record."""
+    document_id = str(uuid.uuid4())
+    db_document = models.Document(id=document_id, **document_data)
+    db.add(db_document)
+    db.commit()
+    db.refresh(db_document)
+    return db_document
+
+
+@document_router.get("/")
+def list_documents(
+    entity_type: Optional[str] = None,
+    entity_id: Optional[str] = None,
+    document_type: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    """List documents with filtering."""
+    query = db.query(models.Document).filter(models.Document.is_active == True)
+    if entity_type:
+        query = query.filter(models.Document.entity_type == entity_type)
+    if entity_id:
+        query = query.filter(models.Document.entity_id == entity_id)
+    if document_type:
+        query = query.filter(models.Document.document_type == document_type)
+    return query.offset(skip).limit(limit).all()
+
+
+@document_router.get("/{document_id}")
+def get_document(document_id: str, db: Session = Depends(get_db)):
+    """Get a specific document."""
+    document = db.query(models.Document).filter(models.Document.id == document_id).first()
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return document
+
+
+@document_router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_document(document_id: str, db: Session = Depends(get_db)):
+    """Soft delete a document."""
+    document = db.query(models.Document).filter(models.Document.id == document_id).first()
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    document.is_active = False
+    db.commit()
+    return None
+
+
+# ========== Email Template Endpoints ==========
+email_template_router = APIRouter(prefix="/api/email-templates", tags=["Email System"])
+
+@email_template_router.post("/", status_code=status.HTTP_201_CREATED)
+def create_email_template(template_data: dict, db: Session = Depends(get_db)):
+    """Create a new email template."""
+    db_template = models.EmailTemplate(**template_data)
+    db.add(db_template)
+    db.commit()
+    db.refresh(db_template)
+    return db_template
+
+
+@email_template_router.get("/")
+def list_email_templates(
+    category: Optional[str] = None,
+    is_active: bool = True,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    """List email templates."""
+    query = db.query(models.EmailTemplate)
+    if category:
+        query = query.filter(models.EmailTemplate.category == category)
+    if is_active is not None:
+        query = query.filter(models.EmailTemplate.is_active == is_active)
+    return query.offset(skip).limit(limit).all()
+
+
+@email_template_router.get("/{template_id}")
+def get_email_template(template_id: int, db: Session = Depends(get_db)):
+    """Get a specific email template."""
+    template = db.query(models.EmailTemplate).filter(models.EmailTemplate.id == template_id).first()
+    if not template:
+        raise HTTPException(status_code=404, detail="Email template not found")
+    return template
+
+
+@email_template_router.put("/{template_id}")
+def update_email_template(template_id: int, template_data: dict, db: Session = Depends(get_db)):
+    """Update an email template."""
+    db_template = db.query(models.EmailTemplate).filter(models.EmailTemplate.id == template_id).first()
+    if not db_template:
+        raise HTTPException(status_code=404, detail="Email template not found")
+    for key, value in template_data.items():
+        setattr(db_template, key, value)
+    db.commit()
+    db.refresh(db_template)
+    return db_template
+
+
+# ========== Email Log Endpoints ==========
+email_log_router = APIRouter(prefix="/api/email-logs", tags=["Email System"])
+
+@email_log_router.get("/")
+def list_email_logs(
+    status: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    """List email logs."""
+    query = db.query(models.EmailLog)
+    if status:
+        query = query.filter(models.EmailLog.status == status)
+    return query.order_by(models.EmailLog.created_at.desc()).offset(skip).limit(limit).all()
+
+
+@email_log_router.get("/{log_id}")
+def get_email_log(log_id: int, db: Session = Depends(get_db)):
+    """Get a specific email log."""
+    log = db.query(models.EmailLog).filter(models.EmailLog.id == log_id).first()
+    if not log:
+        raise HTTPException(status_code=404, detail="Email log not found")
+    return log
+
+
+# ========== Data Retention Policy Endpoints ==========
+retention_policy_router = APIRouter(prefix="/api/retention-policies", tags=["Compliance"])
+
+@retention_policy_router.post("/", status_code=status.HTTP_201_CREATED)
+def create_retention_policy(policy_data: dict, db: Session = Depends(get_db)):
+    """Create a new data retention policy."""
+    db_policy = models.DataRetentionPolicy(**policy_data)
+    db.add(db_policy)
+    db.commit()
+    db.refresh(db_policy)
+    return db_policy
+
+
+@retention_policy_router.get("/")
+def list_retention_policies(
+    is_active: bool = True,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    """List data retention policies."""
+    query = db.query(models.DataRetentionPolicy)
+    if is_active is not None:
+        query = query.filter(models.DataRetentionPolicy.is_active == is_active)
+    return query.offset(skip).limit(limit).all()
+
+
+@retention_policy_router.get("/{policy_id}")
+def get_retention_policy(policy_id: int, db: Session = Depends(get_db)):
+    """Get a specific retention policy."""
+    policy = db.query(models.DataRetentionPolicy).filter(models.DataRetentionPolicy.id == policy_id).first()
+    if not policy:
+        raise HTTPException(status_code=404, detail="Retention policy not found")
+    return policy
+
+
+@retention_policy_router.put("/{policy_id}")
+def update_retention_policy(policy_id: int, policy_data: dict, db: Session = Depends(get_db)):
+    """Update a retention policy."""
+    db_policy = db.query(models.DataRetentionPolicy).filter(models.DataRetentionPolicy.id == policy_id).first()
+    if not db_policy:
+        raise HTTPException(status_code=404, detail="Retention policy not found")
+    for key, value in policy_data.items():
+        setattr(db_policy, key, value)
+    db.commit()
+    db.refresh(db_policy)
+    return db_policy
+
+
+# ========== Data Access Log Endpoints ==========
+access_log_router = APIRouter(prefix="/api/access-logs", tags=["Compliance"])
+
+@access_log_router.post("/", status_code=status.HTTP_201_CREATED)
+def log_data_access(access_data: dict, db: Session = Depends(get_db)):
+    """Log a data access event."""
+    db_log = models.DataAccessLog(**access_data)
+    db.add(db_log)
+    db.commit()
+    db.refresh(db_log)
+    return db_log
+
+
+@access_log_router.get("/")
+def list_access_logs(
+    user_id: Optional[int] = None,
+    entity_type: Optional[str] = None,
+    action: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    """List data access logs."""
+    query = db.query(models.DataAccessLog)
+    if user_id:
+        query = query.filter(models.DataAccessLog.user_id == user_id)
+    if entity_type:
+        query = query.filter(models.DataAccessLog.entity_type == entity_type)
+    if action:
+        query = query.filter(models.DataAccessLog.action == action)
+    return query.order_by(models.DataAccessLog.accessed_at.desc()).offset(skip).limit(limit).all()
+
+
+# ========== Consent Record Endpoints ==========
+consent_router = APIRouter(prefix="/api/consent-records", tags=["Compliance - GDPR"])
+
+@consent_router.post("/", status_code=status.HTTP_201_CREATED)
+def create_consent_record(consent_data: dict, db: Session = Depends(get_db)):
+    """Create a new consent record."""
+    consent = models.ConsentRecord(**consent_data)
+    db.add(consent)
+    db.commit()
+    db.refresh(consent)
+    return consent
+
+
+@consent_router.get("/")
+def list_consent_records(
+    user_id: Optional[int] = None,
+    consent_type: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    """List consent records."""
+    query = db.query(models.ConsentRecord)
+    if user_id:
+        query = query.filter(models.ConsentRecord.user_id == user_id)
+    if consent_type:
+        query = query.filter(models.ConsentRecord.consent_type == consent_type)
+    return query.offset(skip).limit(limit).all()
+
+
+@consent_router.put("/{consent_id}/withdraw")
+def withdraw_consent(consent_id: int, db: Session = Depends(get_db)):
+    """Withdraw a consent."""
+    consent = db.query(models.ConsentRecord).filter(models.ConsentRecord.id == consent_id).first()
+    if not consent:
+        raise HTTPException(status_code=404, detail="Consent record not found")
+    consent.consent_given = False
+    consent.withdrawn_date = datetime.utcnow()
+    db.commit()
+    db.refresh(consent)
+    return consent
+
+
+# ========== Data Export Request Endpoints ==========
+export_request_router = APIRouter(prefix="/api/data-export-requests", tags=["Compliance - GDPR"])
+
+@export_request_router.post("/", status_code=status.HTTP_201_CREATED)
+def create_export_request(request_data: dict, db: Session = Depends(get_db)):
+    """Create a new data export/deletion request."""
+    request_id = str(uuid.uuid4())
+    db_request = models.DataExportRequest(id=request_id, **request_data)
+    db.add(db_request)
+    db.commit()
+    db.refresh(db_request)
+    return db_request
+
+
+@export_request_router.get("/")
+def list_export_requests(
+    status: Optional[str] = None,
+    request_type: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    """List data export requests."""
+    query = db.query(models.DataExportRequest)
+    if status:
+        query = query.filter(models.DataExportRequest.status == status)
+    if request_type:
+        query = query.filter(models.DataExportRequest.request_type == request_type)
+    return query.order_by(models.DataExportRequest.requested_at.desc()).offset(skip).limit(limit).all()
+
+
+@export_request_router.get("/{request_id}")
+def get_export_request(request_id: str, db: Session = Depends(get_db)):
+    """Get a specific export request."""
+    request = db.query(models.DataExportRequest).filter(models.DataExportRequest.id == request_id).first()
+    if not request:
+        raise HTTPException(status_code=404, detail="Export request not found")
+    return request
+
+
+# ========== Security Event Endpoints ==========
+security_event_router = APIRouter(prefix="/api/security-events", tags=["Security & Compliance"])
+
+@security_event_router.post("/", status_code=status.HTTP_201_CREATED)
+def log_security_event(event_data: dict, db: Session = Depends(get_db)):
+    """Log a security event."""
+    event = models.SecurityEvent(**event_data)
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    return event
+
+
+@security_event_router.get("/")
+def list_security_events(
+    event_type: Optional[str] = None,
+    severity: Optional[str] = None,
+    resolved: Optional[bool] = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    """List security events."""
+    query = db.query(models.SecurityEvent)
+    if event_type:
+        query = query.filter(models.SecurityEvent.event_type == event_type)
+    if severity:
+        query = query.filter(models.SecurityEvent.severity == severity)
+    if resolved is not None:
+        query = query.filter(models.SecurityEvent.resolved == resolved)
+    return query.order_by(models.SecurityEvent.occurred_at.desc()).offset(skip).limit(limit).all()
+
+
+@security_event_router.put("/{event_id}/resolve")
+def resolve_security_event(event_id: int, db: Session = Depends(get_db)):
+    """Mark a security event as resolved."""
+    event = db.query(models.SecurityEvent).filter(models.SecurityEvent.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Security event not found")
+    event.resolved = True
+    event.resolved_at = datetime.utcnow()
+    db.commit()
+    db.refresh(event)
+    return event
+
+
+# ========== System Configuration Endpoints ==========
+sys_config_router = APIRouter(prefix="/api/system-config", tags=["System Configuration"])
+
+@sys_config_router.post("/", status_code=status.HTTP_201_CREATED)
+def create_system_config(config_data: dict, db: Session = Depends(get_db)):
+    """Create a new system configuration."""
+    db_config = models.SystemConfiguration(**config_data)
+    db.add(db_config)
+    db.commit()
+    db.refresh(db_config)
+    return db_config
+
+
+@sys_config_router.get("/")
+def list_system_configs(
+    category: Optional[str] = None,
+    is_active: bool = True,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    """List system configurations."""
+    query = db.query(models.SystemConfiguration)
+    if category:
+        query = query.filter(models.SystemConfiguration.category == category)
+    if is_active is not None:
+        query = query.filter(models.SystemConfiguration.is_active == is_active)
+    return query.offset(skip).limit(limit).all()
+
+
+@sys_config_router.get("/{config_key}")
+def get_system_config(config_key: str, db: Session = Depends(get_db)):
+    """Get a specific system configuration."""
+    config = db.query(models.SystemConfiguration).filter(
+        models.SystemConfiguration.config_key == config_key
+    ).first()
+    if not config:
+        raise HTTPException(status_code=404, detail="Configuration not found")
+    return config
+
+
+@sys_config_router.put("/{config_key}")
+def update_system_config(config_key: str, config_data: dict, db: Session = Depends(get_db)):
+    """Update a system configuration."""
+    db_config = db.query(models.SystemConfiguration).filter(
+        models.SystemConfiguration.config_key == config_key
+    ).first()
+    if not db_config:
+        raise HTTPException(status_code=404, detail="Configuration not found")
+    for key, value in config_data.items():
+        setattr(db_config, key, value)
+    db.commit()
+    db.refresh(db_config)
+    return db_config
