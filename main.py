@@ -12,6 +12,7 @@ Security Note:
 """
 import os
 import logging
+import threading
 import uvicorn
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -64,17 +65,27 @@ app = FastAPI(
 @app.on_event("startup")
 async def startup_event():
     """
-    Initialize database tables on application startup.
+    Initialize application on startup.
     
-    This runs after the server starts listening on the port, ensuring
-    Cloud Run health checks pass even if database initialization is slow.
+    Database table creation is done in a background thread to avoid blocking
+    the server from starting and listening on the port. This ensures Cloud Run
+    health checks pass even if database initialization takes time or fails.
     """
-    logger.info("Creating database tables...")
-    try:
-        Base.metadata.create_all(bind=engine)
-        logger.info("Database tables created successfully")
-    except Exception as e:
-        logger.warning("Could not create database tables: %s", str(e))
+    logger.info("Application starting up...")
+    
+    def create_tables():
+        """Create database tables in background thread."""
+        try:
+            logger.info("Creating database tables...")
+            Base.metadata.create_all(bind=engine)
+            logger.info("Database tables created successfully")
+        except Exception as e:
+            logger.warning("Could not create database tables: %s. "
+                         "Tables may already exist or database may be unavailable.", str(e))
+    
+    # Start table creation in background thread
+    thread = threading.Thread(target=create_tables, daemon=True)
+    thread.start()
 
 # CORS configuration - using wildcard for non-prod environment
 # TODO: In production, replace with specific allowed origins
