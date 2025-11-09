@@ -13,7 +13,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 from models import FinancialYear
 from datetime import datetime, date
-from dateutil import parser
 
 
 class FinancialYearService:
