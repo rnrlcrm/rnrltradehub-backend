@@ -11,6 +11,9 @@ from .financial_service import FinancialService
 from .user_service import UserService
 from .compliance_service import ComplianceService
 from .report_service import ReportService
+from .organization_service import OrganizationService
+from .financial_year_service import FinancialYearService
+from .year_end_service import YearEndService
 
 __all__ = [
     "BusinessPartnerService",
@@ -19,4 +22,7 @@ __all__ = [
     "UserService",
     "ComplianceService",
     "ReportService",
+    "OrganizationService",
+    "FinancialYearService",
+    "YearEndService",
 ]

@@ -242,6 +242,8 @@ class Invoice(Base, TimestampMixin):
 
     id = Column(String(36), primary_key=True)
     invoice_no = Column(String(50), unique=True, nullable=False, index=True)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False, index=True)
+    financial_year = Column(String(20), nullable=False, index=True)
     sales_contract_id = Column(String(36), ForeignKey('sales_contracts.id'), nullable=False)
     date = Column(DateTime, nullable=False)
     amount = Column(Float, nullable=False)
@@ -259,6 +261,8 @@ class Payment(Base, TimestampMixin):
 
     id = Column(String(36), primary_key=True)
     payment_id = Column(String(50), unique=True, nullable=False, index=True)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False, index=True)
+    financial_year = Column(String(20), nullable=False, index=True)
     invoice_id = Column(String(36), ForeignKey('invoices.id'), nullable=False)
     date = Column(DateTime, nullable=False)
     amount = Column(Float, nullable=False)
@@ -275,6 +279,8 @@ class Dispute(Base, TimestampMixin):
 
     id = Column(String(36), primary_key=True)
     dispute_id = Column(String(50), unique=True, nullable=False, index=True)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False, index=True)
+    financial_year = Column(String(20), nullable=False, index=True)
     sales_contract_id = Column(String(36), ForeignKey('sales_contracts.id'), nullable=False)
     reason = Column(Text, nullable=False)
     status = Column(
@@ -293,6 +299,8 @@ class Commission(Base, TimestampMixin):
 
     id = Column(String(36), primary_key=True)
     commission_id = Column(String(50), unique=True, nullable=False, index=True)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False, index=True)
+    financial_year = Column(String(20), nullable=False, index=True)
     sales_contract_id = Column(String(36), ForeignKey('sales_contracts.id'), nullable=False)
     agent = Column(String(255), nullable=False)
     amount = Column(Float, nullable=False)
@@ -562,3 +570,81 @@ class SystemConfiguration(Base, TimestampMixin):
     is_sensitive = Column(Boolean, default=False)
     description = Column(Text)
     is_active = Column(Boolean, default=True)
+
+
+class Organization(Base, TimestampMixin):
+    """Organization table for multi-company support."""
+
+    __tablename__ = "organizations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    legal_name = Column(String(255), nullable=False)
+    display_name = Column(String(255), nullable=False)
+    pan = Column(String(50), unique=True, nullable=False, index=True)
+    gstin = Column(String(50), unique=True, index=True)
+    address = Column(JSON)  # Registered address as JSON
+    logo_url = Column(String(500))
+    settings = Column(JSON)  # Organization-specific settings
+    is_active = Column(Boolean, default=True, index=True)
+
+    # Relationships
+    financial_years = relationship("FinancialYear", back_populates="organization")
+
+
+class FinancialYear(Base, TimestampMixin):
+    """Financial year table for Indian accounting (April-March)."""
+
+    __tablename__ = "financial_years"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False, index=True)
+    year_code = Column(String(20), nullable=False, index=True)  # e.g., "2023-24"
+    start_date = Column(DateTime, nullable=False)  # April 1
+    end_date = Column(DateTime, nullable=False)  # March 31
+    assessment_year = Column(String(20), nullable=False)  # e.g., "2024-25" (FY + 1)
+    is_active = Column(Boolean, default=False, index=True)  # Current active year
+    is_closed = Column(Boolean, default=False, index=True)  # Year-end closed
+    opening_balances = Column(JSON)  # Opening balances for this year
+
+    # Relationships
+    organization = relationship("Organization", back_populates="financial_years")
+    transfers_from = relationship(
+        "YearEndTransfer",
+        foreign_keys="YearEndTransfer.from_financial_year_id",
+        back_populates="from_financial_year"
+    )
+    transfers_to = relationship(
+        "YearEndTransfer",
+        foreign_keys="YearEndTransfer.to_financial_year_id",
+        back_populates="to_financial_year"
+    )
+
+
+class YearEndTransfer(Base, TimestampMixin):
+    """Year-end transfer log for tracking data moved between financial years."""
+
+    __tablename__ = "year_end_transfers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False, index=True)
+    from_financial_year_id = Column(Integer, ForeignKey('financial_years.id'), nullable=False)
+    to_financial_year_id = Column(Integer, ForeignKey('financial_years.id'), nullable=False)
+    transfer_date = Column(DateTime, default=datetime.utcnow, nullable=False)
+    transfer_type = Column(String(100), nullable=False, index=True)  # 'pending_invoices', 'opening_balances', etc.
+    entity_type = Column(String(100), nullable=False)  # 'invoice', 'payment', 'commission', 'dispute'
+    entity_count = Column(Integer, default=0)
+    transfer_summary = Column(JSON)  # Details of what was transferred
+    performed_by = Column(String(255), nullable=False)  # User who performed the transfer
+    notes = Column(Text)
+
+    # Relationships
+    from_financial_year = relationship(
+        "FinancialYear",
+        foreign_keys=[from_financial_year_id],
+        back_populates="transfers_from"
+    )
+    to_financial_year = relationship(
+        "FinancialYear",
+        foreign_keys=[to_financial_year_id],
+        back_populates="transfers_to"
+    )
