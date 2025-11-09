@@ -2,6 +2,7 @@
 SQLAlchemy database models matching frontend TypeScript schema.
 
 This module contains all database table definitions based on the frontend types.
+All models inherit common timestamp fields for audit tracking.
 """
 from datetime import datetime
 from sqlalchemy import (
@@ -9,10 +10,23 @@ from sqlalchemy import (
     Text, Enum, ForeignKey, JSON
 )
 from sqlalchemy.orm import relationship
+from sqlalchemy.ext.declarative import declared_attr
 from database import Base
 
 
-class CciTerm(Base):
+class TimestampMixin:
+    """Mixin to add timestamp fields to all models."""
+
+    @declared_attr
+    def created_at(cls):
+        return Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    @declared_attr
+    def updated_at(cls):
+        return Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class CciTerm(Base, TimestampMixin):
     """CCI Terms configuration table."""
 
     __tablename__ = "cci_terms"
@@ -34,11 +48,9 @@ class CciTerm(Base):
     late_lifting_tier2_days = Column(Integer, nullable=False)
     late_lifting_tier2_percent = Column(Float, nullable=False)
     late_lifting_tier3_percent = Column(Float, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
-class CommissionStructure(Base):
+class CommissionStructure(Base, TimestampMixin):
     """Commission structure configuration table."""
 
     __tablename__ = "commission_structures"
@@ -47,11 +59,9 @@ class CommissionStructure(Base):
     name = Column(String(255), nullable=False)
     type = Column(Enum('PERCENTAGE', 'PER_BALE', name='commission_type'), nullable=False)
     value = Column(Float, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
-class GstRate(Base):
+class GstRate(Base, TimestampMixin):
     """GST rates configuration table."""
 
     __tablename__ = "gst_rates"
@@ -60,11 +70,9 @@ class GstRate(Base):
     rate = Column(Float, nullable=False)
     description = Column(String(255), nullable=False)
     hsn_code = Column(String(50), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
-class Location(Base):
+class Location(Base, TimestampMixin):
     """Location master data table."""
 
     __tablename__ = "locations"
@@ -73,11 +81,9 @@ class Location(Base):
     country = Column(String(100), nullable=False)
     state = Column(String(100), nullable=False)
     city = Column(String(100), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
-class User(Base):
+class User(Base, TimestampMixin):
     """User table for authentication and role management."""
 
     __tablename__ = "users"
@@ -86,16 +92,18 @@ class User(Base):
     name = Column(String(255), nullable=False)
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
-    role = Column(
+    role_id = Column(Integer, ForeignKey('roles.id'), nullable=True)  # Foreign key to roles table
+    role_name = Column(
         Enum('Admin', 'Sales', 'Accounts', 'Dispute Manager', 'Vendor/Client', name='user_role'),
-        nullable=False
-    )
+        nullable=True
+    )  # Kept for backward compatibility
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    role = relationship("Role", back_populates="users")
 
 
-class Address(Base):
+class Address(Base, TimestampMixin):
     """Address table for business partners."""
 
     __tablename__ = "addresses"
@@ -109,13 +117,11 @@ class Address(Base):
     pincode = Column(String(20), nullable=False)
     country = Column(String(100), nullable=False)
     is_default = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     business_partner = relationship("BusinessPartner", back_populates="shipping_addresses")
 
 
-class BusinessPartner(Base):
+class BusinessPartner(Base, TimestampMixin):
     """Business Partner (Vendor/Client/Agent) table."""
 
     __tablename__ = "business_partners"
@@ -163,14 +169,12 @@ class BusinessPartner(Base):
     # Internal Notes
     compliance_notes = Column(Text)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     shipping_addresses = relationship("Address", back_populates="business_partner", cascade="all, delete-orphan")
 
 
-class SalesContract(Base):
+class SalesContract(Base, TimestampMixin):
     """Sales Contract table."""
 
     __tablename__ = "sales_contracts"
@@ -229,11 +233,9 @@ class SalesContract(Base):
     cci_contract_no = Column(String(100))
     cci_term_id = Column(Integer, ForeignKey('cci_terms.id'))
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
-class Invoice(Base):
+class Invoice(Base, TimestampMixin):
     """Invoice table."""
 
     __tablename__ = "invoices"
@@ -248,11 +250,9 @@ class Invoice(Base):
         nullable=False,
         default='Unpaid'
     )
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
-class Payment(Base):
+class Payment(Base, TimestampMixin):
     """Payment table."""
 
     __tablename__ = "payments"
@@ -266,11 +266,9 @@ class Payment(Base):
         Enum('Bank Transfer', 'Cheque', 'Cash', name='payment_method'),
         nullable=False
     )
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
-class Dispute(Base):
+class Dispute(Base, TimestampMixin):
     """Dispute table."""
 
     __tablename__ = "disputes"
@@ -286,11 +284,9 @@ class Dispute(Base):
     )
     resolution = Column(Text)
     date_raised = Column(DateTime, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
-class Commission(Base):
+class Commission(Base, TimestampMixin):
     """Commission table."""
 
     __tablename__ = "commissions"
@@ -305,11 +301,9 @@ class Commission(Base):
         nullable=False,
         default='Due'
     )
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
-class AuditLog(Base):
+class AuditLog(Base, TimestampMixin):
     """Audit log table for tracking all system changes."""
 
     __tablename__ = "audit_logs"
@@ -325,4 +319,79 @@ class AuditLog(Base):
     action = Column(String(100), nullable=False)
     details = Column(Text, nullable=False)
     reason = Column(Text)
-    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class MasterDataItem(Base, TimestampMixin):
+    """Generic master data table for various configurations."""
+
+    __tablename__ = "master_data_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    category = Column(String(100), nullable=False, index=True)  # e.g., 'variety', 'quality_parameter'
+    name = Column(String(255), nullable=False)
+    code = Column(String(50))
+    description = Column(Text)
+    is_active = Column(Boolean, default=True)
+    metadata = Column(JSON)  # Additional flexible data
+
+
+class StructuredTerm(Base, TimestampMixin):
+    """Structured terms for payments, delivery, etc."""
+
+    __tablename__ = "structured_terms"
+
+    id = Column(Integer, primary_key=True, index=True)
+    category = Column(String(100), nullable=False, index=True)  # 'payment', 'delivery', 'passing', etc.
+    name = Column(String(255), nullable=False)
+    days = Column(Integer, nullable=False)
+    description = Column(Text)
+    is_active = Column(Boolean, default=True)
+
+
+class Role(Base, TimestampMixin):
+    """User roles for RBAC."""
+
+    __tablename__ = "roles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), unique=True, nullable=False, index=True)
+    description = Column(Text)
+    is_active = Column(Boolean, default=True)
+
+    # Relationships
+    permissions = relationship("Permission", back_populates="role", cascade="all, delete-orphan")
+    users = relationship("User", back_populates="role")
+
+
+class Permission(Base, TimestampMixin):
+    """Permissions for role-based access control."""
+
+    __tablename__ = "permissions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    role_id = Column(Integer, ForeignKey('roles.id'), nullable=False)
+    module = Column(String(100), nullable=False)  # 'Sales Contracts', 'Invoices', etc.
+    can_create = Column(Boolean, default=False)
+    can_read = Column(Boolean, default=False)
+    can_update = Column(Boolean, default=False)
+    can_delete = Column(Boolean, default=False)
+    can_approve = Column(Boolean, default=False)
+    can_share = Column(Boolean, default=False)
+
+    # Relationships
+    role = relationship("Role", back_populates="permissions")
+
+
+class Setting(Base, TimestampMixin):
+    """System settings and configuration."""
+
+    __tablename__ = "settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    category = Column(String(100), nullable=False, index=True)  # 'system', 'email', 'notification', etc.
+    key = Column(String(255), unique=True, nullable=False, index=True)
+    value = Column(Text)
+    value_type = Column(String(50), default='string')  # 'string', 'number', 'boolean', 'json'
+    description = Column(Text)
+    is_public = Column(Boolean, default=False)  # Whether setting can be viewed by non-admins
+    is_editable = Column(Boolean, default=True)  # Whether setting can be modified via UI

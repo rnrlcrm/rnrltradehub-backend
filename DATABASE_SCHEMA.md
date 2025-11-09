@@ -285,3 +285,138 @@ invoices
 - Enums ensure data integrity for status fields
 - Password hashing uses bcrypt
 - Cascading deletes configured for dependent records (e.g., addresses)
+
+### Master Data Items (`master_data_items`)
+
+Generic master data for various configurations.
+
+**Columns:**
+- `id` (INTEGER, PK): Auto-increment ID
+- `category` (VARCHAR(100)): Category (e.g., 'variety', 'quality_parameter')
+- `name` (VARCHAR(255)): Item name
+- `code` (VARCHAR(50)): Item code
+- `description` (TEXT): Description
+- `is_active` (BOOLEAN): Active status
+- `metadata` (JSON): Additional flexible data
+- `created_at` (TIMESTAMP): Record creation timestamp
+- `updated_at` (TIMESTAMP): Last update timestamp
+
+### Structured Terms (`structured_terms`)
+
+Structured terms for payments, delivery, etc.
+
+**Columns:**
+- `id` (INTEGER, PK): Auto-increment ID
+- `category` (VARCHAR(100)): Term category (payment, delivery, passing, etc.)
+- `name` (VARCHAR(255)): Term name
+- `days` (INTEGER): Number of days
+- `description` (TEXT): Description
+- `is_active` (BOOLEAN): Active status
+- `created_at` (TIMESTAMP): Record creation timestamp
+- `updated_at` (TIMESTAMP): Last update timestamp
+
+### Roles (`roles`)
+
+User roles for RBAC.
+
+**Columns:**
+- `id` (INTEGER, PK): Auto-increment ID
+- `name` (VARCHAR(100), UNIQUE): Role name
+- `description` (TEXT): Role description
+- `is_active` (BOOLEAN): Active status
+- `created_at` (TIMESTAMP): Record creation timestamp
+- `updated_at` (TIMESTAMP): Last update timestamp
+
+**Relationships:**
+- One-to-many with `permissions`
+- One-to-many with `users`
+
+### Permissions (`permissions`)
+
+Permissions for role-based access control.
+
+**Columns:**
+- `id` (INTEGER, PK): Auto-increment ID
+- `role_id` (INTEGER, FK): Reference to role
+- `module` (VARCHAR(100)): Module name
+- `can_create` (BOOLEAN): Create permission
+- `can_read` (BOOLEAN): Read permission
+- `can_update` (BOOLEAN): Update permission
+- `can_delete` (BOOLEAN): Delete permission
+- `can_approve` (BOOLEAN): Approval permission
+- `can_share` (BOOLEAN): Share permission
+- `created_at` (TIMESTAMP): Record creation timestamp
+- `updated_at` (TIMESTAMP): Last update timestamp
+
+### Settings (`settings`)
+
+System settings and configuration.
+
+**Columns:**
+- `id` (INTEGER, PK): Auto-increment ID
+- `category` (VARCHAR(100)): Setting category
+- `key` (VARCHAR(255), UNIQUE): Setting key
+- `value` (TEXT): Setting value
+- `value_type` (VARCHAR(50)): Value type (string, number, boolean, json)
+- `description` (TEXT): Description
+- `is_public` (BOOLEAN): Public visibility flag
+- `is_editable` (BOOLEAN): Editability flag
+- `created_at` (TIMESTAMP): Record creation timestamp
+- `updated_at` (TIMESTAMP): Last update timestamp
+
+## Updated Entity Relationship Diagram
+
+```
+roles
+    |-- permissions (1:many)
+    |-- users (1:many)
+
+business_partners
+    |-- addresses (1:many)
+    |-- sales_contracts as client (1:many)
+    |-- sales_contracts as vendor (1:many)
+    |-- sales_contracts as agent (1:many)
+
+sales_contracts
+    |-- invoices (1:many)
+    |-- disputes (1:many)
+    |-- commissions (1:many)
+    |-- references cci_terms
+    |-- references gst_rates
+    |-- references commission_structures
+
+invoices
+    |-- payments (1:many)
+
+master_data_items
+    - Generic configuration data
+
+structured_terms
+    - Payment/delivery term definitions
+
+settings
+    - System configuration
+```
+
+## Architecture Improvements
+
+### TimestampMixin
+All models now inherit from `TimestampMixin` which provides:
+- `created_at` - Automatic timestamp on creation
+- `updated_at` - Automatic timestamp on updates
+
+This ensures consistent audit tracking across all tables.
+
+### Flexible Schema
+- `master_data_items.metadata` (JSON) - Store category-specific data
+- `settings.value_type` - Support different data types
+- `structured_terms` - Standardize common business terms
+
+### Future Extensions
+The schema is designed to support:
+- Multi-tenancy (add `organization_id` to relevant tables)
+- Soft deletes (add `deleted_at` timestamp)
+- Versioning (already implemented for sales_contracts)
+- Workflow/approval states
+- Document attachments
+- Activity logging beyond audit trail

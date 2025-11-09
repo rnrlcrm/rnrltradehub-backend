@@ -20,11 +20,21 @@ from sqlalchemy import text
 
 from database import get_db, engine, Base
 from schemas import HealthCheckResponse
-from routes import (
+from routes_complete import (
     business_partner_router,
     sales_contract_router,
     cci_term_router,
-    user_router
+    user_router,
+    invoice_router,
+    payment_router,
+    dispute_router,
+    commission_router,
+    role_router,
+    setting_router,
+    master_data_router,
+    gst_rate_router,
+    location_router,
+    commission_structure_router
 )
 
 # Configure logging
@@ -60,11 +70,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
+# Include routers for all entities
 app.include_router(business_partner_router)
 app.include_router(sales_contract_router)
 app.include_router(cci_term_router)
 app.include_router(user_router)
+app.include_router(invoice_router)
+app.include_router(payment_router)
+app.include_router(dispute_router)
+app.include_router(commission_router)
+app.include_router(role_router)
+app.include_router(setting_router)
+app.include_router(master_data_router)
+app.include_router(gst_rate_router)
+app.include_router(location_router)
+app.include_router(commission_structure_router)
 
 
 @app.get("/")
