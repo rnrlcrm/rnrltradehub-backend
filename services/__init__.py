@@ -10,6 +10,7 @@ from .sales_contract_service import SalesContractService
 from .financial_service import FinancialService
 from .user_service import UserService
 from .compliance_service import ComplianceService
+from .report_service import ReportService
 
 __all__ = [
     "BusinessPartnerService",
@@ -17,4 +18,5 @@ __all__ = [
     "FinancialService",
     "UserService",
     "ComplianceService",
+    "ReportService",
 ]

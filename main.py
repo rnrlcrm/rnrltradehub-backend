@@ -45,6 +45,7 @@ from routes_complete import (
     security_event_router,
     sys_config_router
 )
+from routes_export import export_router
 
 # Configure logging
 logging.basicConfig(
@@ -113,6 +114,9 @@ app.include_router(security_event_router)
 
 # System Configuration
 app.include_router(sys_config_router)
+
+# Report Export
+app.include_router(export_router)
 
 
 @app.get("/")

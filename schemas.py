@@ -4,8 +4,14 @@ Pydantic schemas for API request/response validation.
 These schemas match the frontend TypeScript interfaces.
 """
 from typing import Optional, List, Dict
-from pydantic import BaseModel, EmailStr
+from datetime import datetime
+from pydantic import BaseModel, EmailStr, field_validator
 from enum import Enum
+from validators import (
+    validate_pan, validate_gstin, validate_mobile, validate_pincode, validate_ifsc,
+    sanitize_pan, sanitize_gstin, sanitize_mobile, sanitize_pincode, sanitize_ifsc,
+    ValidationError
+)
 
 
 # Enums
@@ -89,6 +95,60 @@ class BusinessPartnerBase(BaseModel):
     gst_doc_url: Optional[str] = None
     cheque_doc_url: Optional[str] = None
     compliance_notes: Optional[str] = None
+    
+    @field_validator('pan')
+    @classmethod
+    def validate_pan_format(cls, v):
+        """Validate PAN format."""
+        try:
+            validate_pan(v)
+            return sanitize_pan(v)
+        except ValidationError as e:
+            raise ValueError(str(e))
+    
+    @field_validator('gstin')
+    @classmethod
+    def validate_gstin_format(cls, v):
+        """Validate GSTIN format."""
+        if v:
+            try:
+                validate_gstin(v)
+                return sanitize_gstin(v)
+            except ValidationError as e:
+                raise ValueError(str(e))
+        return v
+    
+    @field_validator('contact_phone')
+    @classmethod
+    def validate_mobile_format(cls, v):
+        """Validate mobile number format."""
+        try:
+            validate_mobile(v)
+            return sanitize_mobile(v)
+        except ValidationError as e:
+            raise ValueError(str(e))
+    
+    @field_validator('pincode')
+    @classmethod
+    def validate_pincode_format(cls, v):
+        """Validate pincode format."""
+        try:
+            validate_pincode(v)
+            return sanitize_pincode(v)
+        except ValidationError as e:
+            raise ValueError(str(e))
+    
+    @field_validator('bank_ifsc')
+    @classmethod
+    def validate_ifsc_format(cls, v):
+        """Validate IFSC code format."""
+        if v:
+            try:
+                validate_ifsc(v)
+                return sanitize_ifsc(v)
+            except ValidationError as e:
+                raise ValueError(str(e))
+        return v
 
 
 class BusinessPartnerCreate(BusinessPartnerBase):
