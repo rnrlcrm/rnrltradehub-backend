@@ -54,19 +54,27 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Create database tables
-logger.info("Creating database tables...")
-try:
-    Base.metadata.create_all(bind=engine)
-    logger.info("Database tables created successfully")
-except Exception as e:
-    logger.warning("Could not create database tables: %s", str(e))
-
 app = FastAPI(
     title="RNRL TradeHub NonProd API",
     description="Backend API for RNRL TradeHub CRM system",
     version="1.0.0"
 )
+
+
+@app.on_event("startup")
+async def startup_event():
+    """
+    Initialize database tables on application startup.
+    
+    This runs after the server starts listening on the port, ensuring
+    Cloud Run health checks pass even if database initialization is slow.
+    """
+    logger.info("Creating database tables...")
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables created successfully")
+    except Exception as e:
+        logger.warning("Could not create database tables: %s", str(e))
 
 # CORS configuration - using wildcard for non-prod environment
 # TODO: In production, replace with specific allowed origins

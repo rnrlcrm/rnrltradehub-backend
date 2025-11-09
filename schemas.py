@@ -269,3 +269,222 @@ class HealthCheckResponse(BaseModel):
     service: str
     version: str
     database: Optional[str] = None
+
+
+# Invoice Schemas
+class InvoiceBase(BaseModel):
+    invoice_no: str
+    organization_id: int
+    financial_year: str
+    sales_contract_id: str
+    date: datetime
+    amount: float
+    status: Optional[str] = 'Unpaid'
+
+
+class InvoiceCreate(InvoiceBase):
+    pass
+
+
+class InvoiceResponse(InvoiceBase):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Payment Schemas
+class PaymentBase(BaseModel):
+    payment_id: str
+    organization_id: int
+    financial_year: str
+    invoice_id: str
+    date: datetime
+    amount: float
+    method: str
+
+
+class PaymentCreate(PaymentBase):
+    pass
+
+
+class PaymentResponse(PaymentBase):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Commission Schemas
+class CommissionBase(BaseModel):
+    commission_id: str
+    organization_id: int
+    financial_year: str
+    sales_contract_id: str
+    agent: str
+    amount: float
+    status: Optional[str] = 'Due'
+
+
+class CommissionCreate(CommissionBase):
+    pass
+
+
+class CommissionResponse(CommissionBase):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Role Schemas
+class RoleBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+    is_active: Optional[bool] = True
+
+
+class RoleCreate(RoleBase):
+    pass
+
+
+class RoleResponse(RoleBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Data Retention Policy Schemas  
+class RetentionPolicyBase(BaseModel):
+    entity_type: str
+    retention_days: int
+    archive_after_days: Optional[int] = None
+    delete_after_days: Optional[int] = None
+    policy_type: str
+    description: Optional[str] = None
+    is_active: Optional[bool] = True
+
+
+class RetentionPolicyCreate(RetentionPolicyBase):
+    pass
+
+
+class RetentionPolicyResponse(RetentionPolicyBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Data Access Log Schemas
+class DataAccessLogBase(BaseModel):
+    user_id: int
+    entity_type: str
+    entity_id: str
+    action: str
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+    purpose: Optional[str] = None
+    metadata_json: Optional[dict] = None
+
+
+class DataAccessLogCreate(DataAccessLogBase):
+    pass
+
+
+class DataAccessLogResponse(DataAccessLogBase):
+    id: int
+    accessed_at: datetime
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Consent Record Schemas
+class ConsentRecordBase(BaseModel):
+    user_id: Optional[int] = None
+    business_partner_id: Optional[str] = None
+    consent_type: str
+    consent_given: bool
+    consent_date: datetime
+    withdrawn_date: Optional[datetime] = None
+    ip_address: Optional[str] = None
+    metadata_json: Optional[dict] = None
+
+
+class ConsentRecordCreate(ConsentRecordBase):
+    pass
+
+
+class ConsentRecordResponse(ConsentRecordBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Data Export Request Schemas
+class DataExportRequestBase(BaseModel):
+    user_id: Optional[int] = None
+    business_partner_id: Optional[str] = None
+    request_type: str
+    status: Optional[str] = 'pending'
+
+
+class DataExportRequestCreate(DataExportRequestBase):
+    pass
+
+
+class DataExportRequestResponse(DataExportRequestBase):
+    id: str
+    requested_at: datetime
+    completed_at: Optional[datetime] = None
+    export_file_path: Optional[str] = None
+    metadata_json: Optional[dict] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Security Event Schemas
+class SecurityEventBase(BaseModel):
+    event_type: str
+    severity: str
+    user_id: Optional[int] = None
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+    description: str
+
+
+class SecurityEventCreate(SecurityEventBase):
+    pass
+
+
+class SecurityEventResponse(SecurityEventBase):
+    id: int
+    event_time: datetime
+    resolved: bool
+    resolved_at: Optional[datetime] = None
+    metadata_json: Optional[dict] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True

@@ -4,7 +4,7 @@ sqlalchemy
 psycopg2-binary
 passlib[bcrypt]
 google-cloud-secret-manager
-pydantic
+pydantic[email]
 python-dotenv
 alembic
 openpyxl
