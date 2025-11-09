@@ -340,7 +340,7 @@ class MasterDataItem(Base, TimestampMixin):
     code = Column(String(50))
     description = Column(Text)
     is_active = Column(Boolean, default=True)
-    metadata = Column(JSON)  # Additional flexible data
+    metadata_json = Column(JSON)  # Additional flexible data
 
 
 class StructuredTerm(Base, TimestampMixin):
@@ -423,7 +423,7 @@ class Document(Base, TimestampMixin):
     description = Column(Text)
     is_active = Column(Boolean, default=True)
     is_public = Column(Boolean, default=False)
-    metadata = Column(JSON)  # Additional file metadata
+    metadata_json = Column(JSON)  # Additional file metadata
 
 
 class EmailTemplate(Base, TimestampMixin):
@@ -462,7 +462,7 @@ class EmailLog(Base, TimestampMixin):
     )
     sent_at = Column(DateTime)
     error_message = Column(Text)
-    metadata = Column(JSON)  # Additional tracking data
+    metadata_json = Column(JSON)  # Additional tracking data
 
 
 class DataRetentionPolicy(Base, TimestampMixin):
@@ -494,7 +494,7 @@ class DataAccessLog(Base, TimestampMixin):
     user_agent = Column(String(500))
     accessed_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     purpose = Column(Text)  # Why the data was accessed
-    metadata = Column(JSON)
+    metadata_json = Column(JSON)
 
 
 class ConsentRecord(Base, TimestampMixin):
@@ -510,7 +510,7 @@ class ConsentRecord(Base, TimestampMixin):
     consent_date = Column(DateTime, nullable=False)
     withdrawn_date = Column(DateTime)
     ip_address = Column(String(50))
-    metadata = Column(JSON)
+    metadata_json = Column(JSON)
 
 
 class DataExportRequest(Base, TimestampMixin):
@@ -531,7 +531,7 @@ class DataExportRequest(Base, TimestampMixin):
     requested_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     completed_at = Column(DateTime)
     export_file_path = Column(String(1000))
-    metadata = Column(JSON)
+    metadata_json = Column(JSON)
 
 
 class SecurityEvent(Base, TimestampMixin):
@@ -553,7 +553,7 @@ class SecurityEvent(Base, TimestampMixin):
     occurred_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     resolved = Column(Boolean, default=False)
     resolved_at = Column(DateTime)
-    metadata = Column(JSON)
+    metadata_json = Column(JSON)
 
 
 class SystemConfiguration(Base, TimestampMixin):
