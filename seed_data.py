@@ -189,9 +189,11 @@ def create_users(db: Session, roles: list):
     db.add_all(users)
     db.commit()
     print(f"✓ Created {len(users)} user(s)")
-    print("  Login credentials:")
+    print("  Login credentials (for development/testing only):")
     for user_data in users_data:
-        print(f"    {user_data['email']} / {user_data['password']}")
+        print(f"    {user_data['email']} / [Password set - check SEED_DATA.md]")
+    print("\n  ⚠️  Note: Default passwords are documented in SEED_DATA.md")
+    print("     Please change these passwords in production!")
     return users
 
 
