@@ -8,10 +8,10 @@ import uuid
 from datetime import datetime, timedelta
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
-from database import SessionLocal, engine, Base
+from database import SessionLocal
 from models import (
     Organization, FinancialYear, User, Role, Permission,
-    BusinessPartner, Address, SalesContract,
+    BusinessPartner, SalesContract,
     Invoice, Payment, Commission, Dispute,
     GstRate, Location, CciTerm, CommissionStructure,
     MasterDataItem, StructuredTerm, Setting,
@@ -59,7 +59,7 @@ def create_financial_years(db: Session, org: Organization):
     print("Creating financial years...")
     current_year = datetime.now().year
     fys = []
-    
+
     # Create last year (closed)
     fy1 = FinancialYear(
         organization_id=org.id,
@@ -72,7 +72,7 @@ def create_financial_years(db: Session, org: Organization):
         opening_balances={}
     )
     fys.append(fy1)
-    
+
     # Create current year (active)
     fy2 = FinancialYear(
         organization_id=org.id,
@@ -85,7 +85,7 @@ def create_financial_years(db: Session, org: Organization):
         opening_balances={}
     )
     fys.append(fy2)
-    
+
     db.add_all(fys)
     db.commit()
     print(f"✓ Created {len(fys)} financial year(s)")
@@ -95,7 +95,7 @@ def create_financial_years(db: Session, org: Organization):
 def create_roles_and_permissions(db: Session):
     """Create roles with permissions."""
     print("Creating roles and permissions...")
-    
+
     roles_data = [
         {
             "name": "Admin",
@@ -130,7 +130,7 @@ def create_roles_and_permissions(db: Session):
             }
         },
     ]
-    
+
     roles = []
     for role_data in roles_data:
         role = Role(
@@ -140,7 +140,7 @@ def create_roles_and_permissions(db: Session):
         )
         db.add(role)
         db.flush()
-        
+
         for module, perms in role_data["permissions"].items():
             permission = Permission(
                 role_id=role.id,
@@ -153,9 +153,9 @@ def create_roles_and_permissions(db: Session):
                 can_share=perms.get("share", False)
             )
             db.add(permission)
-        
+
         roles.append(role)
-    
+
     db.commit()
     print(f"✓ Created {len(roles)} role(s) with permissions")
     return roles
@@ -164,16 +164,16 @@ def create_roles_and_permissions(db: Session):
 def create_users(db: Session, roles: list):
     """Create sample users."""
     print("Creating users...")
-    
+
     users_data = [
         {"name": "Admin User", "email": "admin@rnrl.com", "role": "Admin", "password": "admin123"},
         {"name": "Sales Manager", "email": "sales@rnrl.com", "role": "Sales", "password": "sales123"},
         {"name": "Accounts Manager", "email": "accounts@rnrl.com", "role": "Accounts", "password": "accounts123"},
     ]
-    
+
     users = []
     role_map = {r.name: r for r in roles}
-    
+
     for user_data in users_data:
         role = role_map.get(user_data["role"])
         user = User(
@@ -185,7 +185,7 @@ def create_users(db: Session, roles: list):
             is_active=True
         )
         users.append(user)
-    
+
     db.add_all(users)
     db.commit()
     print(f"✓ Created {len(users)} user(s)")
@@ -198,14 +198,14 @@ def create_users(db: Session, roles: list):
 def create_gst_rates(db: Session):
     """Create GST rate master data."""
     print("Creating GST rates...")
-    
+
     gst_rates = [
         GstRate(rate=0.0, description="Nil Rate", hsn_code="0000"),
         GstRate(rate=5.0, description="5% GST", hsn_code="5201"),
         GstRate(rate=12.0, description="12% GST", hsn_code="5202"),
         GstRate(rate=18.0, description="18% GST", hsn_code="5203"),
     ]
-    
+
     db.add_all(gst_rates)
     db.commit()
     print(f"✓ Created {len(gst_rates)} GST rate(s)")
@@ -215,7 +215,7 @@ def create_gst_rates(db: Session):
 def create_locations(db: Session):
     """Create location master data."""
     print("Creating locations...")
-    
+
     locations = [
         Location(country="India", state="Maharashtra", city="Mumbai"),
         Location(country="India", state="Maharashtra", city="Nagpur"),
@@ -224,7 +224,7 @@ def create_locations(db: Session):
         Location(country="India", state="Punjab", city="Ludhiana"),
         Location(country="India", state="Haryana", city="Sirsa"),
     ]
-    
+
     db.add_all(locations)
     db.commit()
     print(f"✓ Created {len(locations)} location(s)")
@@ -234,14 +234,14 @@ def create_locations(db: Session):
 def create_commission_structures(db: Session):
     """Create commission structure templates."""
     print("Creating commission structures...")
-    
+
     structures = [
         CommissionStructure(name="Standard 2%", type="PERCENTAGE", value=2.0),
         CommissionStructure(name="Premium 3%", type="PERCENTAGE", value=3.0),
         CommissionStructure(name="Fixed ₹50 per bale", type="PER_BALE", value=50.0),
         CommissionStructure(name="Fixed ₹75 per bale", type="PER_BALE", value=75.0),
     ]
-    
+
     db.add_all(structures)
     db.commit()
     print(f"✓ Created {len(structures)} commission structure(s)")
@@ -251,7 +251,7 @@ def create_commission_structures(db: Session):
 def create_cci_terms(db: Session):
     """Create CCI terms configuration."""
     print("Creating CCI terms...")
-    
+
     cci_terms = [
         CciTerm(
             name="Standard CCI Terms 2024",
@@ -272,7 +272,7 @@ def create_cci_terms(db: Session):
             late_lifting_tier3_percent=1.0
         )
     ]
-    
+
     db.add_all(cci_terms)
     db.commit()
     print(f"✓ Created {len(cci_terms)} CCI term(s)")
@@ -282,28 +282,28 @@ def create_cci_terms(db: Session):
 def create_master_data(db: Session):
     """Create master data items."""
     print("Creating master data items...")
-    
+
     items = [
         # Cotton varieties
         MasterDataItem(category="variety", name="Shankar-6", code="S6", is_active=True),
         MasterDataItem(category="variety", name="MCU-5", code="MCU5", is_active=True),
         MasterDataItem(category="variety", name="DCH-32", code="DCH32", is_active=True),
-        
+
         # Trade types
         MasterDataItem(category="trade_type", name="Spot", is_active=True),
         MasterDataItem(category="trade_type", name="Forward", is_active=True),
         MasterDataItem(category="trade_type", name="Ready", is_active=True),
-        
+
         # Bargain types
         MasterDataItem(category="bargain_type", name="Ex-Gin", is_active=True),
         MasterDataItem(category="bargain_type", name="Delivery", is_active=True),
-        
+
         # Quality parameters
         MasterDataItem(category="quality_parameter", name="Staple Length", code="STAPLE", is_active=True),
         MasterDataItem(category="quality_parameter", name="Micronaire", code="MIC", is_active=True),
         MasterDataItem(category="quality_parameter", name="Trash %", code="TRASH", is_active=True),
     ]
-    
+
     db.add_all(items)
     db.commit()
     print(f"✓ Created {len(items)} master data item(s)")
@@ -313,21 +313,21 @@ def create_master_data(db: Session):
 def create_structured_terms(db: Session):
     """Create structured terms for payments, delivery, etc."""
     print("Creating structured terms...")
-    
+
     terms = [
         # Payment terms
         StructuredTerm(category="payment", name="Immediate", days=0, description="Payment on delivery"),
         StructuredTerm(category="payment", name="7 Days", days=7, description="Payment within 7 days"),
         StructuredTerm(category="payment", name="15 Days", days=15, description="Payment within 15 days"),
         StructuredTerm(category="payment", name="30 Days", days=30, description="Payment within 30 days"),
-        
+
         # Delivery terms
         StructuredTerm(category="delivery", name="Immediate", days=0, description="Immediate delivery"),
         StructuredTerm(category="delivery", name="7 Days", days=7, description="Delivery within 7 days"),
         StructuredTerm(category="delivery", name="15 Days", days=15, description="Delivery within 15 days"),
         StructuredTerm(category="delivery", name="30 Days", days=30, description="Delivery within 30 days"),
     ]
-    
+
     db.add_all(terms)
     db.commit()
     print(f"✓ Created {len(terms)} structured term(s)")
@@ -337,7 +337,7 @@ def create_structured_terms(db: Session):
 def create_business_partners(db: Session):
     """Create sample business partners."""
     print("Creating business partners...")
-    
+
     partners_data = [
         {
             "bp_code": "BP001",
@@ -416,7 +416,7 @@ def create_business_partners(db: Session):
             "gstin": "03AABCL4321N1Z9",
         },
     ]
-    
+
     partners = []
     for data in partners_data:
         addr = data.pop("address")
@@ -435,28 +435,28 @@ def create_business_partners(db: Session):
             bank_ifsc="SBIN0001234"
         )
         partners.append(partner)
-    
+
     db.add_all(partners)
     db.commit()
     print(f"✓ Created {len(partners)} business partner(s)")
     return partners
 
 
-def create_sales_contracts(db: Session, org: Organization, fy: FinancialYear, 
+def create_sales_contracts(db: Session, org: Organization, fy: FinancialYear,
                            partners: list, gst_rates: list, comm_structures: list):
     """Create sample sales contracts."""
     print("Creating sales contracts...")
-    
+
     buyers = [p for p in partners if p.business_type in ["BUYER", "BOTH"]]
     sellers = [p for p in partners if p.business_type in ["SELLER", "BOTH"]]
     agents = [p for p in partners if p.business_type == "AGENT"]
-    
+
     contracts = []
     for i in range(5):
         buyer = buyers[i % len(buyers)]
         seller = sellers[i % len(sellers)]
         agent = agents[0] if agents else None
-        
+
         contract = SalesContract(
             id=str(uuid.uuid4()),
             sc_no=f"SC/{fy.year_code}/{str(i+1).zfill(4)}",
@@ -493,7 +493,7 @@ def create_sales_contracts(db: Session, org: Organization, fy: FinancialYear,
             cci_contract_no=f"CCI/{fy.year_code}/{str(i+1).zfill(4)}"
         )
         contracts.append(contract)
-    
+
     db.add_all(contracts)
     db.commit()
     print(f"✓ Created {len(contracts)} sales contract(s)")
@@ -503,7 +503,7 @@ def create_sales_contracts(db: Session, org: Organization, fy: FinancialYear,
 def create_invoices(db: Session, org: Organization, fy: FinancialYear, contracts: list):
     """Create sample invoices."""
     print("Creating invoices...")
-    
+
     invoices = []
     for i, contract in enumerate(contracts[:4]):  # Create invoices for first 4 contracts
         amount = contract.quantity_bales * contract.rate * 1.05  # Including 5% GST
@@ -518,7 +518,7 @@ def create_invoices(db: Session, org: Organization, fy: FinancialYear, contracts
             status="Paid" if i < 2 else "Partially Paid" if i == 2 else "Unpaid"
         )
         invoices.append(invoice)
-    
+
     db.add_all(invoices)
     db.commit()
     print(f"✓ Created {len(invoices)} invoice(s)")
@@ -528,7 +528,7 @@ def create_invoices(db: Session, org: Organization, fy: FinancialYear, contracts
 def create_payments(db: Session, org: Organization, fy: FinancialYear, invoices: list):
     """Create sample payments."""
     print("Creating payments...")
-    
+
     payments = []
     for i, invoice in enumerate(invoices[:3]):  # Create payments for first 3 invoices
         payment_amount = invoice.amount if i < 2 else invoice.amount * 0.5  # Full or partial
@@ -543,7 +543,7 @@ def create_payments(db: Session, org: Organization, fy: FinancialYear, invoices:
             method="Bank Transfer"
         )
         payments.append(payment)
-    
+
     db.add_all(payments)
     db.commit()
     print(f"✓ Created {len(payments)} payment(s)")
@@ -553,7 +553,7 @@ def create_payments(db: Session, org: Organization, fy: FinancialYear, invoices:
 def create_commissions(db: Session, org: Organization, fy: FinancialYear, contracts: list):
     """Create sample commissions."""
     print("Creating commissions...")
-    
+
     commissions = []
     for i, contract in enumerate(contracts[:3]):  # Create commissions for first 3 contracts
         if contract.agent_id:
@@ -569,7 +569,7 @@ def create_commissions(db: Session, org: Organization, fy: FinancialYear, contra
                 status="Paid" if i == 0 else "Due"
             )
             commissions.append(commission)
-    
+
     db.add_all(commissions)
     db.commit()
     print(f"✓ Created {len(commissions)} commission(s)")
@@ -579,7 +579,7 @@ def create_commissions(db: Session, org: Organization, fy: FinancialYear, contra
 def create_disputes(db: Session, org: Organization, fy: FinancialYear, contracts: list):
     """Create sample disputes."""
     print("Creating disputes...")
-    
+
     disputes = []
     if len(contracts) >= 4:
         dispute = Dispute(
@@ -593,7 +593,7 @@ def create_disputes(db: Session, org: Organization, fy: FinancialYear, contracts
             date_raised=datetime.now() - timedelta(days=5)
         )
         disputes.append(dispute)
-    
+
     db.add_all(disputes)
     db.commit()
     print(f"✓ Created {len(disputes)} dispute(s)")
@@ -603,7 +603,7 @@ def create_disputes(db: Session, org: Organization, fy: FinancialYear, contracts
 def create_settings(db: Session):
     """Create system settings."""
     print("Creating system settings...")
-    
+
     settings = [
         Setting(
             category="system",
@@ -642,7 +642,7 @@ def create_settings(db: Session):
             is_editable=True
         ),
     ]
-    
+
     db.add_all(settings)
     db.commit()
     print(f"✓ Created {len(settings)} setting(s)")
@@ -652,7 +652,7 @@ def create_settings(db: Session):
 def create_email_templates(db: Session):
     """Create email templates."""
     print("Creating email templates...")
-    
+
     templates = [
         EmailTemplate(
             name="contract_created",
@@ -706,7 +706,7 @@ def create_email_templates(db: Session):
             description="Notification sent when an invoice is generated"
         ),
     ]
-    
+
     db.add_all(templates)
     db.commit()
     print(f"✓ Created {len(templates)} email template(s)")
@@ -716,7 +716,7 @@ def create_email_templates(db: Session):
 def create_retention_policies(db: Session):
     """Create data retention policies."""
     print("Creating data retention policies...")
-    
+
     policies = [
         DataRetentionPolicy(
             entity_type="sales_contract",
@@ -746,7 +746,7 @@ def create_retention_policies(db: Session):
             is_active=True
         ),
     ]
-    
+
     db.add_all(policies)
     db.commit()
     print(f"✓ Created {len(policies)} retention policy(ies)")
@@ -758,30 +758,30 @@ def main():
     print("\n" + "="*60)
     print("RNRL TradeHub - Database Seeding")
     print("="*60 + "\n")
-    
+
     # Create database session
     db = SessionLocal()
-    
+
     try:
         # Create master data
         orgs = create_organizations(db)
         org = orgs[0]
-        
+
         fys = create_financial_years(db, org)
         fy = fys[1]  # Current year
-        
+
         roles = create_roles_and_permissions(db)
         users = create_users(db, roles)
-        
+
         gst_rates = create_gst_rates(db)
         locations = create_locations(db)
         comm_structures = create_commission_structures(db)
         cci_terms = create_cci_terms(db)
-        
+
         master_data = create_master_data(db)
         structured_terms = create_structured_terms(db)
         settings = create_settings(db)
-        
+
         # Create transactional data
         partners = create_business_partners(db)
         contracts = create_sales_contracts(db, org, fy, partners, gst_rates, comm_structures)
@@ -789,11 +789,11 @@ def main():
         payments = create_payments(db, org, fy, invoices)
         commissions = create_commissions(db, org, fy, contracts)
         disputes = create_disputes(db, org, fy, contracts)
-        
+
         # Create compliance data
         email_templates = create_email_templates(db)
         retention_policies = create_retention_policies(db)
-        
+
         print("\n" + "="*60)
         print("✅ Database seeding completed successfully!")
         print("="*60)
@@ -817,9 +817,9 @@ def main():
         print(f"  • {len(settings)} Setting(s)")
         print(f"  • {len(email_templates)} Email Template(s)")
         print(f"  • {len(retention_policies)} Retention Policy(ies)")
-        
+
         print("\n" + "="*60 + "\n")
-        
+
     except Exception as e:
         print(f"\n❌ Error during seeding: {str(e)}")
         db.rollback()
