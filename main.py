@@ -47,6 +47,7 @@ from routes_complete import (
     sys_config_router
 )
 from routes_export import export_router
+from routes_settings import settings_router
 
 # Configure logging
 logging.basicConfig(
@@ -100,6 +101,10 @@ app.add_middleware(
 )
 
 # Include routers for all entities
+
+# Settings Module (new comprehensive settings API) - MUST BE FIRST to avoid conflicts
+app.include_router(settings_router)
+
 app.include_router(business_partner_router)
 app.include_router(sales_contract_router)
 app.include_router(cci_term_router)

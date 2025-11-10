@@ -133,6 +133,190 @@ def delete_business_partner(partner_id: str, db: Session = Depends(get_db)):
     return None
 
 
+# ========== Sales Contract Endpoints ==========
+@sales_contract_router.post("/", status_code=status.HTTP_201_CREATED)
+def create_sales_contract(contract_data: dict, db: Session = Depends(get_db)):
+    """Create a new sales contract."""
+    contract_id = str(uuid.uuid4())
+    db_contract = models.SalesContract(id=contract_id, **contract_data)
+    db.add(db_contract)
+    db.commit()
+    db.refresh(db_contract)
+    return db_contract
+
+
+@sales_contract_router.get("/")
+def list_sales_contracts(
+    skip: int = 0,
+    limit: int = 100,
+    status: Optional[str] = None,
+    organization: Optional[str] = None,
+    financial_year: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """List all sales contracts with filtering."""
+    query = db.query(models.SalesContract)
+    
+    if status:
+        query = query.filter(models.SalesContract.status == status)
+    if organization:
+        query = query.filter(models.SalesContract.organization == organization)
+    if financial_year:
+        query = query.filter(models.SalesContract.financial_year == financial_year)
+    
+    return query.offset(skip).limit(limit).all()
+
+
+@sales_contract_router.get("/{contract_id}")
+def get_sales_contract(contract_id: str, db: Session = Depends(get_db)):
+    """Get a specific sales contract."""
+    contract = db.query(models.SalesContract).filter(models.SalesContract.id == contract_id).first()
+    if not contract:
+        raise HTTPException(status_code=404, detail="Sales contract not found")
+    return contract
+
+
+@sales_contract_router.put("/{contract_id}")
+def update_sales_contract(contract_id: str, contract_data: dict, db: Session = Depends(get_db)):
+    """Update a sales contract."""
+    db_contract = db.query(models.SalesContract).filter(models.SalesContract.id == contract_id).first()
+    if not db_contract:
+        raise HTTPException(status_code=404, detail="Sales contract not found")
+    
+    for key, value in contract_data.items():
+        setattr(db_contract, key, value)
+    
+    db.commit()
+    db.refresh(db_contract)
+    return db_contract
+
+
+@sales_contract_router.delete("/{contract_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_sales_contract(contract_id: str, db: Session = Depends(get_db)):
+    """Delete a sales contract."""
+    db_contract = db.query(models.SalesContract).filter(models.SalesContract.id == contract_id).first()
+    if not db_contract:
+        raise HTTPException(status_code=404, detail="Sales contract not found")
+    
+    db.delete(db_contract)
+    db.commit()
+    return None
+
+
+# ========== CCI Terms Endpoints ==========
+@cci_term_router.post("/", status_code=status.HTTP_201_CREATED)
+def create_cci_term(term_data: dict, db: Session = Depends(get_db)):
+    """Create a new CCI term configuration."""
+    db_term = models.CciTerm(**term_data)
+    db.add(db_term)
+    db.commit()
+    db.refresh(db_term)
+    return db_term
+
+
+@cci_term_router.get("/")
+def list_cci_terms(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    """List all CCI terms."""
+    return db.query(models.CciTerm).offset(skip).limit(limit).all()
+
+
+@cci_term_router.get("/{term_id}")
+def get_cci_term(term_id: int, db: Session = Depends(get_db)):
+    """Get a specific CCI term."""
+    term = db.query(models.CciTerm).filter(models.CciTerm.id == term_id).first()
+    if not term:
+        raise HTTPException(status_code=404, detail="CCI term not found")
+    return term
+
+
+@cci_term_router.put("/{term_id}")
+def update_cci_term(term_id: int, term_data: dict, db: Session = Depends(get_db)):
+    """Update a CCI term."""
+    db_term = db.query(models.CciTerm).filter(models.CciTerm.id == term_id).first()
+    if not db_term:
+        raise HTTPException(status_code=404, detail="CCI term not found")
+    
+    for key, value in term_data.items():
+        setattr(db_term, key, value)
+    
+    db.commit()
+    db.refresh(db_term)
+    return db_term
+
+
+@cci_term_router.delete("/{term_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_cci_term(term_id: int, db: Session = Depends(get_db)):
+    """Delete a CCI term."""
+    db_term = db.query(models.CciTerm).filter(models.CciTerm.id == term_id).first()
+    if not db_term:
+        raise HTTPException(status_code=404, detail="CCI term not found")
+    
+    db.delete(db_term)
+    db.commit()
+    return None
+
+
+# ========== User Endpoints ==========
+@user_router.post("/", status_code=status.HTTP_201_CREATED)
+def create_user(user_data: dict, db: Session = Depends(get_db)):
+    """Create a new user."""
+    # Check if email already exists
+    existing = db.query(models.User).filter(models.User.email == user_data.get('email')).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="User with this email already exists")
+    
+    db_user = models.User(**user_data)
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+
+@user_router.get("/")
+def list_users(skip: int = 0, limit: int = 100, is_active: Optional[bool] = None, db: Session = Depends(get_db)):
+    """List all users."""
+    query = db.query(models.User)
+    if is_active is not None:
+        query = query.filter(models.User.is_active == is_active)
+    return query.offset(skip).limit(limit).all()
+
+
+@user_router.get("/{user_id}")
+def get_user(user_id: int, db: Session = Depends(get_db)):
+    """Get a specific user."""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+@user_router.put("/{user_id}")
+def update_user(user_id: int, user_data: dict, db: Session = Depends(get_db)):
+    """Update a user."""
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    for key, value in user_data.items():
+        setattr(db_user, key, value)
+    
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+
+@user_router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(user_id: int, db: Session = Depends(get_db)):
+    """Delete a user."""
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    db.delete(db_user)
+    db.commit()
+    return None
+
+
 # ========== Invoice Endpoints ==========
 @invoice_router.post("/", status_code=status.HTTP_201_CREATED)
 def create_invoice(invoice_data: dict, db: Session = Depends(get_db)):
