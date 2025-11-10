@@ -337,174 +337,113 @@ Authorization: Bearer <token>
 7. **Response**: Return organization-scoped data
 
 ### Error Cases
+- **403 Forbidden**: Invalid organization, inactive organization, or organization mismatch
+- **401 Unauthorized**: Invalid/missing token
+- **403 Forbidden**: Insufficient permissions
+- **404 Not Found**: Resource not found in user's organization
 
-## API Endpoints
+## Security Considerations
 
-### Back Office Portal APIs
+### 1. Data Leakage Prevention
+- Always filter by organization_id in WHERE clauses
+- Never expose organization_id in URLs (use headers)
+- Validate organization ownership before any operation
+- Use prepared statements to prevent SQL injection
 
-```
-GET    /api/back-office/business-partners/     # List all business partners
-GET    /api/back-office/sales-contracts/       # List all contracts
-GET    /api/back-office/invoices/              # List all invoices
-GET    /api/back-office/users/                 # List all users
-POST   /api/back-office/users/                 # Create back office user
-```
+### 2. Super Admin Access
+- Super admins can access all organizations
+- Require explicit super_admin flag on user
+- Log all super admin actions
+- Require MFA for super admin access
 
-### Client Portal APIs
+### 3. Audit Trail
+- Log all cross-organization access attempts
+- Track organization changes
+- Monitor for data access anomalies
+- Include organization_id in all audit logs
 
-```
-GET    /api/client/my-contracts/               # Contracts where user is buyer
-GET    /api/client/my-invoices/                # Invoices for user's contracts
-GET    /api/client/my-payments/                # Payments made
-GET    /api/client/my-profile/                 # Business partner profile
-PUT    /api/client/my-profile/                 # Update profile
-POST   /api/client/sub-users/                  # Create sub-user (max 2)
-GET    /api/client/sub-users/                  # List sub-users
-DELETE /api/client/sub-users/{id}              # Delete sub-user
-```
+### 4. Rate Limiting
+- Apply rate limits per organization
+- Prevent one organization from affecting others
+- Monitor resource usage per organization
 
-### Vendor Portal APIs
+## Testing Requirements
 
-```
-GET    /api/vendor/my-contracts/               # Contracts where user is seller
-GET    /api/vendor/my-invoices/                # Invoices for user's contracts
-GET    /api/vendor/my-payments/                # Payments received
-GET    /api/vendor/my-profile/                 # Business partner profile
-PUT    /api/vendor/my-profile/                 # Update profile
-POST   /api/vendor/sub-users/                  # Create sub-user (max 2)
-GET    /api/vendor/sub-users/                  # List sub-users
-DELETE /api/vendor/sub-users/{id}              # Delete sub-user
-```
+### 1. Unit Tests
+- Test organization filtering in all queries
+- Test organization validation
+- Test permission checks
+- Test cross-organization access prevention
 
-### Authentication APIs
+### 2. Integration Tests
+- Test complete request flow with organization context
+- Test data isolation between organizations
+- Test user switching organizations (should fail)
+- Test super admin access
 
-```
-POST   /api/auth/login                         # Login and get token + user_type
-POST   /api/auth/logout                        # Logout
-POST   /api/auth/change-password               # Change password
-GET    /api/auth/me                            # Get current user info
-```
+### 3. Security Tests
+- Test SQL injection with organization_id
+- Test unauthorized organization access
+- Test token replay across organizations
+- Test permission bypass attempts
 
-## Security & Compliance
+## Configuration
 
-### Data Isolation Rules
+### Environment Variables
+```bash
+# Enable multi-tenant mode
+MULTI_TENANT_ENABLED=true
 
-1. **Back Office Users**:
-   - Can access all data across all business partners
-   - No restrictions based on business_partner_id
-   - Used for internal staff only
+# Default organization for system users
+DEFAULT_ORGANIZATION_ID=1
 
-2. **Client Users**:
-   - Can ONLY access contracts where `client_id == business_partner_id`
-   - Can ONLY access invoices/payments related to their contracts
-   - Cannot see vendor-specific data
-   - Cannot see other clients' data
-
-3. **Vendor Users**:
-   - Can ONLY access contracts where `vendor_id == business_partner_id`
-   - Can ONLY access invoices/payments related to their contracts
-   - Cannot see client-specific data
-   - Cannot see other vendors' data
-
-### Automatic Enforcement
-
-All queries are automatically filtered based on user_type:
-
-```python
-def filter_by_user_access(query, model, user: User, db: Session):
-    """Apply access control filter to any query."""
-    
-    if user.user_type == 'BACK_OFFICE':
-        # No filtering - full access
-        return query
-    
-    # Get effective business partner ID (handles sub-users)
-    bp_id = get_effective_business_partner_id(user, db)
-    
-    if user.user_type == 'CLIENT':
-        # Filter to contracts where user is client
-        if model == SalesContract:
-            return query.filter(SalesContract.client_id == bp_id)
-        elif model == Invoice:
-            return query.join(SalesContract).filter(SalesContract.client_id == bp_id)
-    
-    elif user.user_type == 'VENDOR':
-        # Filter to contracts where user is vendor
-        if model == SalesContract:
-            return query.filter(SalesContract.vendor_id == bp_id)
-        elif model == Invoice:
-            return query.join(SalesContract).filter(SalesContract.vendor_id == bp_id)
-    
-    return query
+# Super admin email (can access all orgs)
+SUPER_ADMIN_EMAIL=admin@rnrltradehub.com
 ```
 
-### Audit Trail
-
-All actions are automatically logged:
-
-```python
-def log_user_action(user: User, action: str, entity_type: str, entity_id: str, db: Session):
-    """Log user action for audit trail."""
-    audit_log = AuditLog(
-        user=user.email,
-        user_type=user.user_type,
-        business_partner_id=get_effective_business_partner_id(user, db) if user.user_type != 'BACK_OFFICE' else None,
-        action=action,
-        entity_type=entity_type,
-        entity_id=entity_id,
-        timestamp=datetime.utcnow()
-    )
-    db.add(audit_log)
-    db.commit()
+### Organization Settings
+Each organization can have custom settings:
+```json
+{
+  "email_domain": "company.com",
+  "logo_url": "https://...",
+  "timezone": "Asia/Kolkata",
+  "currency": "INR",
+  "fiscal_year_start": "04-01",
+  "features_enabled": ["invoices", "contracts", "disputes"],
+  "integrations": {
+    "email": {"provider": "smtp", "config": {...}},
+    "storage": {"provider": "gcs", "bucket": "..."}
+  }
+}
 ```
 
-## Implementation Checklist
+## Migration Checklist
 
-### Database Changes
-- [ ] Add user_type enum to User model
-- [ ] Add business_partner_id to User model
-- [ ] Add parent_user_id to User model (self-referential)
-- [ ] Add is_parent boolean to User model
-- [ ] Add users relationship to BusinessPartner model
-- [ ] Create database migration
+- [ ] Add organization_id to User model
+- [ ] Add organization_id to BusinessPartner model
+- [ ] Add organization_id to SalesContract model
+- [ ] Add organization_id to configuration tables
+- [ ] Add organization_id to compliance tables
+- [ ] Add organization_id to audit tables
+- [ ] Create organization context dependency
+- [ ] Update all route handlers
+- [ ] Update all service methods
+- [ ] Create permission checking decorator
+- [ ] Add integration tests
+- [ ] Update API documentation
+- [ ] Create organization admin guide
+- [ ] Performance test with multiple organizations
 
-### Backend Implementation
-- [ ] Implement authentication with user_type detection
-- [ ] Create portal routing logic
-- [ ] Implement data access filters for each user type
-- [ ] Create sub-user management endpoints
-- [ ] Implement sub-user limit validation
-- [ ] Add automatic permission inheritance
-- [ ] Create helper function get_effective_business_partner_id()
-- [ ] Update all query filters to respect user_type
-- [ ] Add audit logging for all actions
+## References
 
-### API Endpoints
-- [ ] POST /api/auth/login (return user_type + portal URL)
-- [ ] GET /api/auth/me
-- [ ] GET /api/client/my-contracts/
-- [ ] GET /api/client/my-invoices/
-- [ ] POST /api/client/sub-users/
-- [ ] GET /api/vendor/my-contracts/
-- [ ] GET /api/vendor/my-invoices/
-- [ ] POST /api/vendor/sub-users/
-- [ ] GET /api/back-office/* (all admin endpoints)
-
-### Testing
-- [ ] Unit tests for access control
-- [ ] Sub-user creation and limits
-- [ ] Permission inheritance
-- [ ] Integration tests for each portal
-- [ ] Security tests for data isolation
-
-### Documentation
-- [x] Complete specification document
-- [ ] API documentation updates
-- [ ] User guides for each portal
-- [ ] Admin guide for user management
+- [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) - Complete database schema
+- [API_ENDPOINTS.md](API_ENDPOINTS.md) - API documentation
+- [SERVICE_LAYER.md](SERVICE_LAYER.md) - Service layer architecture
+- [COMPLIANCE.md](COMPLIANCE.md) - Compliance requirements
 
 ---
 
-**Version**: 2.0  
-**Status**: Implementation Ready  
+**Version**: 1.0  
+**Status**: Specification  
 **Last Updated**: 2025-11-10

@@ -84,7 +84,7 @@ class Location(Base, TimestampMixin):
 
 
 class User(Base, TimestampMixin):
-    """User table for authentication and role management."""
+    """User table for authentication and multi-tenant access control."""
 
     __tablename__ = "users"
 
@@ -92,15 +92,39 @@ class User(Base, TimestampMixin):
     name = Column(String(255), nullable=False)
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
+    
+    # User Type - determines portal and access level
+    user_type = Column(
+        Enum('BACK_OFFICE', 'CLIENT', 'VENDOR', name='user_type_enum'),
+        nullable=False,
+        index=True,
+        default='CLIENT'
+    )
+    
+    # Business Partner Linkage (for CLIENT and VENDOR users only)
+    business_partner_id = Column(String(36), ForeignKey('business_partners.id'), nullable=True, index=True)
+    
+    # Sub-User Support
+    parent_user_id = Column(Integer, ForeignKey('users.id'), nullable=True, index=True)
+    is_parent = Column(Boolean, default=True)  # False for sub-users
+    
+    # Role and Organization (for BACK_OFFICE users)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=True, index=True)
     role_id = Column(Integer, ForeignKey('roles.id'), nullable=True)  # Foreign key to roles table
     role_name = Column(
         Enum('Admin', 'Sales', 'Accounts', 'Dispute Manager', 'Vendor/Client', name='user_role'),
         nullable=True
     )  # Kept for backward compatibility
+    
+    # Status
     is_active = Column(Boolean, default=True)
 
     # Relationships
     role = relationship("Role", back_populates="users")
+    organization = relationship("Organization", back_populates="users")
+    business_partner = relationship("BusinessPartner", back_populates="users")
+    parent_user = relationship("User", remote_side=[id], foreign_keys=[parent_user_id])
+    sub_users = relationship("User", foreign_keys=[parent_user_id], back_populates="parent_user")
 
 
 class Address(Base, TimestampMixin):
@@ -172,6 +196,7 @@ class BusinessPartner(Base, TimestampMixin):
 
     # Relationships
     shipping_addresses = relationship("Address", back_populates="business_partner", cascade="all, delete-orphan")
+    users = relationship("User", back_populates="business_partner")
 
 
 class SalesContract(Base, TimestampMixin):
@@ -589,6 +614,7 @@ class Organization(Base, TimestampMixin):
 
     # Relationships
     financial_years = relationship("FinancialYear", back_populates="organization")
+    users = relationship("User", back_populates="organization")
 
 
 class FinancialYear(Base, TimestampMixin):
