@@ -10,3 +10,4 @@ alembic
 openpyxl
 reportlab
 python-multipart
+pyjwt
