@@ -98,9 +98,23 @@ class User(Base, TimestampMixin):
         nullable=True
     )  # Kept for backward compatibility
     is_active = Column(Boolean, default=True)
+    
+    # Multi-tenant support
+    client_id = Column(String(36), ForeignKey('business_partners.id'), nullable=True, index=True)
+    vendor_id = Column(String(36), ForeignKey('business_partners.id'), nullable=True, index=True)
+    parent_user_id = Column(Integer, ForeignKey('users.id'), nullable=True, index=True)
+    user_type = Column(
+        Enum('primary', 'sub_user', name='user_type'),
+        nullable=False,
+        default='primary'
+    )
+    max_sub_users = Column(Integer, default=5)  # Limit for sub-users
 
     # Relationships
     role = relationship("Role", back_populates="users")
+    parent_user = relationship("User", remote_side=[id], backref="sub_users")
+    client = relationship("BusinessPartner", foreign_keys=[client_id])
+    vendor = relationship("BusinessPartner", foreign_keys=[vendor_id])
 
 
 class Address(Base, TimestampMixin):
@@ -327,6 +341,25 @@ class AuditLog(Base, TimestampMixin):
     action = Column(String(100), nullable=False)
     details = Column(Text, nullable=False)
     reason = Column(Text)
+
+
+class UserAuditLog(Base, TimestampMixin):
+    """User audit log table for tracking user activities."""
+
+    __tablename__ = "user_audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
+    action = Column(String(100), nullable=False, index=True)  # login, logout, create, update, delete, etc.
+    entity_type = Column(String(100), nullable=True)  # Type of entity affected
+    entity_id = Column(String(100), nullable=True)  # ID of entity affected
+    ip_address = Column(String(50), nullable=True)
+    user_agent = Column(String(500), nullable=True)
+    details = Column(JSON, nullable=True)  # Additional context
+    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    # Relationship
+    user = relationship("User", backref="audit_logs")
 
 
 class MasterDataItem(Base, TimestampMixin):

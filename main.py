@@ -47,6 +47,7 @@ from routes_complete import (
     sys_config_router
 )
 from routes_export import export_router
+from routes_auth import auth_router, team_router
 
 # Configure logging
 logging.basicConfig(
@@ -136,6 +137,10 @@ app.include_router(sys_config_router)
 
 # Report Export
 app.include_router(export_router)
+
+# Authentication & Team Management
+app.include_router(auth_router)
+app.include_router(team_router)
 
 
 @app.get("/")
