@@ -47,6 +47,10 @@ from routes_complete import (
     sys_config_router
 )
 from routes_export import export_router
+from routes_auth import auth_router
+from routes_client import client_router
+from routes_vendor import vendor_router
+from routes_back_office import back_office_router
 
 # Configure logging
 logging.basicConfig(
@@ -100,6 +104,13 @@ app.add_middleware(
 )
 
 # Include routers for all entities
+# Authentication & Portal Routes
+app.include_router(auth_router)
+app.include_router(client_router)
+app.include_router(vendor_router)
+app.include_router(back_office_router)
+
+# Legacy/General Routes
 app.include_router(business_partner_router)
 app.include_router(sales_contract_router)
 app.include_router(cci_term_router)
