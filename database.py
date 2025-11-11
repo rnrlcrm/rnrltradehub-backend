@@ -12,11 +12,31 @@ from sqlalchemy.pool import NullPool
 
 logger = logging.getLogger(__name__)
 
-# Get database URL from environment variable
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://user:password@localhost:5432/rnrltradehub"
-)
+# Get database configuration from environment variables
+# Priority: DATABASE_URL > individual DB_* variables > default localhost
+db_host = os.getenv("DB_HOST")
+db_name = os.getenv("DB_NAME")
+db_user = os.getenv("DB_USER")
+db_password = os.getenv("DB_PASSWORD")
+db_port = os.getenv("DB_PORT", "5432")
+
+# Build DATABASE_URL based on available environment variables
+if os.getenv("DATABASE_URL"):
+    # Use DATABASE_URL if explicitly provided
+    DATABASE_URL = os.getenv("DATABASE_URL")
+elif db_host and db_name and db_user and db_password:
+    # Build from individual components
+    # Check if DB_HOST is a Cloud SQL Unix socket path
+    if db_host.startswith("/cloudsql/"):
+        # Cloud SQL Unix socket connection format
+        # Format: postgresql://user:password@/dbname?host=/cloudsql/PROJECT:REGION:INSTANCE
+        DATABASE_URL = f"postgresql://{db_user}:{db_password}@/{db_name}?host={db_host}"
+    else:
+        # Standard TCP connection format
+        DATABASE_URL = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+else:
+    # Default for local development
+    DATABASE_URL = "postgresql://user:password@localhost:5432/rnrltradehub"
 
 # Log database configuration (without credentials)
 if "postgresql" in DATABASE_URL:
