@@ -5,7 +5,7 @@ These schemas match the frontend TypeScript interfaces.
 """
 from typing import Optional, List, Dict
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, Field
 from enum import Enum
 from validators import (
     validate_pan, validate_gstin, validate_mobile, validate_pincode, validate_ifsc,
@@ -259,14 +259,26 @@ class UserCreate(UserBase):
     password: str
 
 
-class UserResponse(UserBase):
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    role: Optional[UserRole] = None
+    password: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class UserResponse(BaseModel):
     id: int
+    name: str
+    email: EmailStr
+    role: Optional[UserRole] = Field(None, validation_alias='role_name')
     is_active: bool
     created_at: datetime
     updated_at: datetime
 
     class Config:
         from_attributes = True
+        populate_by_name = True
 
 
 # Enhanced User Schemas for Settings Module
