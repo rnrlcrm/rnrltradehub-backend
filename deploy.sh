@@ -38,19 +38,19 @@ fi
 echo ""
 echo "Which service would you like to deploy to?"
 echo ""
-echo "1) rnrltradehub-nonprod (Default, recommended)"
-echo "2) erp-nonprod-backend (Legacy compatibility)"
+echo "1) erp-nonprod-backend (Fixes the 404 issue, recommended)"
+echo "2) rnrltradehub-nonprod (Alternative service)"
 echo ""
 read -p "Enter choice [1-2]: " choice
 
 case $choice in
     1)
-        SERVICE_NAME="rnrltradehub-nonprod"
+        SERVICE_NAME="erp-nonprod-backend"
         CONFIG_FILE="cloudbuild.yaml"
         ;;
     2)
-        SERVICE_NAME="erp-nonprod-backend"
-        CONFIG_FILE="cloudbuild-erp-backend.yaml"
+        SERVICE_NAME="rnrltradehub-nonprod"
+        CONFIG_FILE="cloudbuild-rnrltradehub.yaml"
         ;;
     *)
         echo -e "${RED}Invalid choice. Exiting.${NC}"
