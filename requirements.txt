@@ -11,3 +11,6 @@ openpyxl
 reportlab
 python-multipart
 pyjwt
+pytest
+pytest-asyncio
+httpx
