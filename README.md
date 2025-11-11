@@ -10,10 +10,13 @@ This is a **production-ready, ERP-grade backend** with **complete compliance and
 ## ✨ Key Features
 
 ### Core Capabilities
-- ✅ **180+ RESTful API endpoints** with full CRUD operations
-- ✅ **26 database tables** with proper relationships and constraints
+- ✅ **190+ RESTful API endpoints** with full CRUD operations
+- ✅ **27 database tables** with proper relationships and constraints
+- ✅ **Multi-tenant architecture** - Client/vendor data isolation
+- ✅ **Team management** - Sub-user creation and management
+- ✅ **JWT authentication** - Secure token-based auth with multi-tenant support
 - ✅ **Role-Based Access Control (RBAC)** - Granular permissions system
-- ✅ **Complete audit trail** - Track all system changes
+- ✅ **Complete audit trail** - Track all system changes and user activity
 - ✅ **File storage & document management** - Cloud storage integration
 - ✅ **Email system** - Templates, notifications, logging
 - ✅ **GDPR compliance** - Data export, deletion, consent management
@@ -23,6 +26,7 @@ This is a **production-ready, ERP-grade backend** with **complete compliance and
 ### Technical Stack
 - ✅ FastAPI framework for high-performance async API
 - ✅ PostgreSQL database with SQLAlchemy ORM
+- ✅ **JWT with PyJWT** - Secure authentication
 - ✅ **Service layer architecture** - Business logic separation
 - ✅ Pydantic for request/response validation
 - ✅ Bcrypt password hashing
@@ -40,7 +44,7 @@ This is a **production-ready, ERP-grade backend** with **complete compliance and
 
 ## 📊 Database Architecture
 
-### Complete Schema (26 Tables)
+### Complete Schema (27 Tables)
 
 #### Core Business Entities (7 tables)
 1. **business_partners** - Vendors, clients, agents
@@ -62,7 +66,7 @@ This is a **production-ready, ERP-grade backend** with **complete compliance and
 15. **system_configurations** - System-wide config
 
 #### Access Control (3 tables)
-16. **users** - User authentication
+16. **users** - User authentication (multi-tenant support)
 17. **roles** - Role definitions
 18. **permissions** - Granular permissions
 
@@ -79,15 +83,16 @@ This is a **production-ready, ERP-grade backend** with **complete compliance and
 24. **consent_records** - User consent
 25. **data_export_requests** - Export/deletion requests
 
-#### Security & Audit (2 tables)
+#### Security & Audit (3 tables)
 26. **security_events** - Security incident log
 27. **audit_logs** - System audit trail
+28. **user_audit_logs** - User activity tracking (NEW)
 
 **See [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) for detailed schema documentation.**
 
-## �� API Endpoints
+## 🔐 API Endpoints
 
-### Endpoint Summary (180+ Total)
+### Endpoint Summary (190+ Total)
 
 | Category | Endpoints | Features |
 |----------|-----------|----------|
@@ -95,15 +100,18 @@ This is a **production-ready, ERP-grade backend** with **complete compliance and
 | Sales Contracts | 5 | Full CRUD + versioning |
 | Financial | 20 | Invoices, payments, commissions |
 | Users & Access | 10 | Users, roles, permissions |
+| **Authentication** | **1** | **JWT login with multi-tenant support (NEW)** |
+| **Team Management** | **5** | **Sub-user CRUD + activity logs (NEW)** |
 | Master Data | 20 | Settings, GST, locations, etc. |
-| **Documents** | **4** | **File upload & management (NEW)** |
-| **Email System** | **7** | **Templates & logs (NEW)** |
-| **Compliance** | **14** | **GDPR, retention, consent (NEW)** |
-| **Security** | **3** | **Event logging (NEW)** |
-| **System Config** | **4** | **Configuration management (NEW)** |
+| **Documents** | **4** | **File upload & management** |
+| **Email System** | **7** | **Templates & logs** |
+| **Compliance** | **14** | **GDPR, retention, consent** |
+| **Security** | **3** | **Event logging** |
+| **System Config** | **4** | **Configuration management** |
 
 **See [API_ENDPOINTS.md](API_ENDPOINTS.md) for complete API reference.**
 **See [SERVICE_LAYER.md](SERVICE_LAYER.md) for business logic architecture.**
+**See [MULTI_TENANT_FEATURES.md](MULTI_TENANT_FEATURES.md) for multi-tenant documentation.**
 
 ## 🏁 Quick Start
 
@@ -239,7 +247,8 @@ GET /api/email-logs/?status=failed
 
 | Document | Description |
 |----------|-------------|
-| [API_ENDPOINTS.md](API_ENDPOINTS.md) | Complete API reference (180+ endpoints) |
+| [API_ENDPOINTS.md](API_ENDPOINTS.md) | Complete API reference (190+ endpoints) |
+| [MULTI_TENANT_FEATURES.md](MULTI_TENANT_FEATURES.md) | **Multi-tenant & team management guide (NEW)** |
 | [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) | Detailed schema (26 tables) with ERD |
 | [COMPLIANCE.md](COMPLIANCE.md) | **Compliance & security guide (NEW)** |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Development setup and guidelines |

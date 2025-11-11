@@ -174,7 +174,7 @@ class UserService:
             return None
         
         # Business Logic: User must be active
-        if user.status != "active":
+        if not user.is_active:
             return None
         
         return user

@@ -488,3 +488,68 @@ class SecurityEventResponse(SecurityEventBase):
 
     class Config:
         from_attributes = True
+
+
+# Authentication Schemas
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: str
+    user: dict
+
+
+class UserType(str, Enum):
+    PRIMARY = "primary"
+    SUB_USER = "sub_user"
+
+
+# Team Management Schemas
+class SubUserCreate(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+    role_id: Optional[int] = None
+
+
+class SubUserUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None
+    role_id: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
+class SubUserResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+    role_id: Optional[int] = None
+    is_active: bool
+    user_type: str
+    parent_user_id: Optional[int] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class UserAuditLogResponse(BaseModel):
+    id: int
+    user_id: int
+    action: str
+    entity_type: Optional[str] = None
+    entity_id: Optional[str] = None
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+    details: Optional[dict] = None
+    timestamp: datetime
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
