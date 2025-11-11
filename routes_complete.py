@@ -428,56 +428,8 @@ def get_role(role_id: int, db: Session = Depends(get_db)):
 
 
 # ========== Settings Endpoints ==========
-@setting_router.post("/", status_code=status.HTTP_201_CREATED)
-def create_setting(setting_data: dict, db: Session = Depends(get_db)):
-    """Create a new setting."""
-    db_setting = models.Setting(**setting_data)
-    db.add(db_setting)
-    db.commit()
-    db.refresh(db_setting)
-    return db_setting
-
-
-@setting_router.get("/")
-def list_settings(
-    category: Optional[str] = None,
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db)
-):
-    """List all settings."""
-    query = db.query(models.Setting)
-    if category:
-        query = query.filter(models.Setting.category == category)
-    return query.offset(skip).limit(limit).all()
-
-
-@setting_router.get("/{key}")
-def get_setting(key: str, db: Session = Depends(get_db)):
-    """Get a specific setting by key."""
-    setting = db.query(models.Setting).filter(models.Setting.key == key).first()
-    if not setting:
-        raise HTTPException(status_code=404, detail="Setting not found")
-    return setting
-
-
-@setting_router.put("/{key}")
-def update_setting(key: str, setting_data: dict, db: Session = Depends(get_db)):
-    """Update a setting."""
-    db_setting = db.query(models.Setting).filter(models.Setting.key == key).first()
-    if not db_setting:
-        raise HTTPException(status_code=404, detail="Setting not found")
-
-    if not db_setting.is_editable:
-        raise HTTPException(status_code=403, detail="This setting cannot be modified")
-
-    for k, v in setting_data.items():
-        setattr(db_setting, k, v)
-
-    db.commit()
-    db.refresh(db_setting)
-    return db_setting
-
+# NOTE: Specific routes like /users must come BEFORE generic routes like /{key}
+# to ensure FastAPI matches them correctly
 
 # ========== Settings/Users Endpoints ==========
 @setting_router.get("/users", response_model=List[schemas.SettingsUserResponse])
@@ -646,6 +598,60 @@ def delete_settings_user(
     
     db.commit()
     return None
+
+
+# ========== General Settings Endpoints ==========
+# NOTE: These generic routes must come AFTER specific routes like /users
+
+@setting_router.post("/", status_code=status.HTTP_201_CREATED)
+def create_setting(setting_data: dict, db: Session = Depends(get_db)):
+    """Create a new setting."""
+    db_setting = models.Setting(**setting_data)
+    db.add(db_setting)
+    db.commit()
+    db.refresh(db_setting)
+    return db_setting
+
+
+@setting_router.get("/")
+def list_settings(
+    category: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    """List all settings."""
+    query = db.query(models.Setting)
+    if category:
+        query = query.filter(models.Setting.category == category)
+    return query.offset(skip).limit(limit).all()
+
+
+@setting_router.get("/{key}")
+def get_setting(key: str, db: Session = Depends(get_db)):
+    """Get a specific setting by key."""
+    setting = db.query(models.Setting).filter(models.Setting.key == key).first()
+    if not setting:
+        raise HTTPException(status_code=404, detail="Setting not found")
+    return setting
+
+
+@setting_router.put("/{key}")
+def update_setting(key: str, setting_data: dict, db: Session = Depends(get_db)):
+    """Update a setting."""
+    db_setting = db.query(models.Setting).filter(models.Setting.key == key).first()
+    if not db_setting:
+        raise HTTPException(status_code=404, detail="Setting not found")
+
+    if not db_setting.is_editable:
+        raise HTTPException(status_code=403, detail="This setting cannot be modified")
+
+    for k, v in setting_data.items():
+        setattr(db_setting, k, v)
+
+    db.commit()
+    db.refresh(db_setting)
+    return db_setting
 
 
 # ========== Master Data Endpoints ==========
