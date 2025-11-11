@@ -248,9 +248,13 @@ GET /api/email-logs/?status=failed
 | Document | Description |
 |----------|-------------|
 | [API_ENDPOINTS.md](API_ENDPOINTS.md) | Complete API reference (190+ endpoints) |
-| [MULTI_TENANT_FEATURES.md](MULTI_TENANT_FEATURES.md) | **Multi-tenant & team management guide (NEW)** |
+| [MULTI_TENANT_FEATURES.md](MULTI_TENANT_FEATURES.md) | **Multi-tenant & team management guide** |
 | [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) | Detailed schema (26 tables) with ERD |
-| [COMPLIANCE.md](COMPLIANCE.md) | **Compliance & security guide (NEW)** |
+| [COMPLIANCE.md](COMPLIANCE.md) | **Compliance & security guide** |
+| [DEPLOYMENT_OPTIONS.md](DEPLOYMENT_OPTIONS.md) | **⭐ Deployment guide - Choose service name (NEW)** |
+| [CLOUD_RUN_DEPLOYMENT.md](CLOUD_RUN_DEPLOYMENT.md) | Cloud Run deployment reference |
+| [DEPLOYMENT_TROUBLESHOOTING.md](DEPLOYMENT_TROUBLESHOOTING.md) | **Deployment troubleshooting guide** |
+| [SERVICE_DEPLOYMENT_RESOLUTION.md](SERVICE_DEPLOYMENT_RESOLUTION.md) | **Service naming resolution guide (NEW)** |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Development setup and guidelines |
 | `.env.example` | Environment configuration template |
 

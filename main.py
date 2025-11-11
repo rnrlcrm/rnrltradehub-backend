@@ -14,8 +14,11 @@ import os
 import logging
 import threading
 import uvicorn
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
@@ -63,6 +66,50 @@ app = FastAPI(
 )
 
 
+# Custom exception handlers
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request, exc):
+    """
+    Custom HTTP exception handler that returns JSON for all errors.
+    This ensures FastAPI always returns JSON, never HTML.
+    """
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "detail": exc.detail,
+            "status_code": exc.status_code,
+            "framework": "FastAPI"
+        }
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc):
+    """Handle validation errors with detailed JSON response."""
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": exc.errors(),
+            "body": exc.body,
+            "framework": "FastAPI"
+        }
+    )
+
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request, exc):
+    """Catch-all exception handler for unexpected errors."""
+    logger.error("Unhandled exception: %s", str(exc), exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Internal server error",
+            "framework": "FastAPI",
+            "error_type": type(exc).__name__
+        }
+    )
+
+
 @app.on_event("startup")
 async def startup_event():
     """
@@ -72,7 +119,15 @@ async def startup_event():
     the server from starting and listening on the port. This ensures Cloud Run
     health checks pass even if database initialization takes time or fails.
     """
-    logger.info("Application starting up...")
+    logger.info("="*60)
+    logger.info("RNRL TradeHub Backend API - Starting Up")
+    logger.info("="*60)
+    logger.info("Application: %s v%s", app.title, "1.0.0")
+    logger.info("Framework: FastAPI")
+    logger.info("Total Routes: %d", len(app.routes))
+    logger.info("Health Endpoint: /health")
+    logger.info("API Docs: /docs")
+    logger.info("="*60)
     
     def create_tables():
         """Create database tables in background thread."""
@@ -151,7 +206,17 @@ async def root():
     Returns:
         dict: A message indicating the API is running.
     """
-    return {"message": "RNRL TradeHub NonProd API is running!"}
+    return {
+        "message": "RNRL TradeHub NonProd API is running!",
+        "status": "ok",
+        "framework": "FastAPI",
+        "version": "1.0.0",
+        "endpoints": {
+            "health": "/health",
+            "docs": "/docs",
+            "api": "/api/*"
+        }
+    }
 
 
 @app.get("/health", response_model=HealthCheckResponse)
@@ -182,6 +247,24 @@ async def health_check(db: Session = Depends(get_db)):
         "service": "rnrltradehub-nonprod",
         "version": "1.0.0",
         "database": db_status
+    }
+
+
+@app.get("/readiness")
+async def readiness_check():
+    """
+    Readiness check endpoint for Cloud Run.
+    
+    This endpoint always returns success to indicate the service is ready
+    to receive traffic, even if database is not yet connected.
+    
+    Returns:
+        dict: Readiness status.
+    """
+    return {
+        "status": "ready",
+        "service": "rnrltradehub-nonprod",
+        "framework": "FastAPI"
     }
 
 

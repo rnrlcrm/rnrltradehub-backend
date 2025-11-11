@@ -3,17 +3,17 @@ options:
 
 steps:
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/erp-nonprod-backend', '.']
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/rnrltradehub-nonprod', '.']
 
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/erp-nonprod-backend']
+    args: ['push', 'gcr.io/$PROJECT_ID/rnrltradehub-nonprod']
 
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
     entrypoint: gcloud
     args:
       [
-        'run', 'deploy', 'erp-nonprod-backend',
-        '--image=gcr.io/$PROJECT_ID/erp-nonprod-backend',
+        'run', 'deploy', 'rnrltradehub-nonprod',
+        '--image=gcr.io/$PROJECT_ID/rnrltradehub-nonprod',
         '--region=us-central1',
         '--platform=managed',
         '--allow-unauthenticated',
