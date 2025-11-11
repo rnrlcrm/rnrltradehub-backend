@@ -373,6 +373,175 @@ def update_setting(key: str, setting_data: dict, db: Session = Depends(get_db)):
     return db_setting
 
 
+# ========== Settings/Users Endpoints ==========
+@setting_router.get("/users", response_model=List[schemas.SettingsUserResponse])
+def list_settings_users(
+    userType: Optional[str] = Query(None, alias="userType"),
+    isActive: Optional[bool] = Query(None, alias="isActive"),
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    """
+    List users with filtering options for settings module.
+    
+    Query Parameters:
+    - userType: Filter by user type (primary, sub_user)
+    - isActive: Filter by active status (true/false)
+    """
+    query = db.query(models.User)
+    
+    if userType:
+        query = query.filter(models.User.user_type == userType)
+    if isActive is not None:
+        query = query.filter(models.User.is_active == isActive)
+    
+    users = query.offset(skip).limit(limit).all()
+    return users
+
+
+@setting_router.post("/users", response_model=schemas.SettingsUserResponse, status_code=status.HTTP_201_CREATED)
+def create_settings_user(
+    user_data: schemas.SettingsUserCreate,
+    db: Session = Depends(get_db)
+):
+    """
+    Create a new user through settings module.
+    
+    Supports creating both primary users and sub-users with multi-tenant capabilities.
+    """
+    # Check if user with email already exists
+    existing = db.query(models.User).filter(models.User.email == user_data.email).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"User with email {user_data.email} already exists"
+        )
+    
+    # Validate role if provided
+    if user_data.role_id:
+        role = db.query(models.Role).filter(models.Role.id == user_data.role_id).first()
+        if not role:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Role with ID {user_data.role_id} not found"
+            )
+    
+    # Validate parent user if sub_user
+    if user_data.user_type == schemas.UserType.SUB_USER and user_data.parent_user_id:
+        parent = db.query(models.User).filter(models.User.id == user_data.parent_user_id).first()
+        if not parent:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Parent user with ID {user_data.parent_user_id} not found"
+            )
+        
+        # Check sub-user limit
+        sub_user_count = db.query(models.User).filter(
+            models.User.parent_user_id == user_data.parent_user_id
+        ).count()
+        if sub_user_count >= parent.max_sub_users:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Parent user has reached maximum sub-user limit of {parent.max_sub_users}"
+            )
+    
+    # Hash password
+    from passlib.context import CryptContext
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    hashed_password = pwd_context.hash(user_data.password)
+    
+    # Create user
+    db_user = models.User(
+        **user_data.model_dump(exclude={'password'}),
+        password_hash=hashed_password
+    )
+    
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+
+@setting_router.put("/users/{user_id}", response_model=schemas.SettingsUserResponse)
+def update_settings_user(
+    user_id: int,
+    user_data: schemas.SettingsUserUpdate,
+    db: Session = Depends(get_db)
+):
+    """
+    Update a user through settings module.
+    
+    Allows updating user details including role, status, and multi-tenant associations.
+    """
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with ID {user_id} not found"
+        )
+    
+    # Validate email uniqueness if being updated
+    if user_data.email and user_data.email != user.email:
+        existing = db.query(models.User).filter(
+            models.User.email == user_data.email,
+            models.User.id != user_id
+        ).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"User with email {user_data.email} already exists"
+            )
+    
+    # Validate role if being updated
+    if user_data.role_id:
+        role = db.query(models.Role).filter(models.Role.id == user_data.role_id).first()
+        if not role:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Role with ID {user_data.role_id} not found"
+            )
+    
+    # Update fields
+    update_dict = user_data.model_dump(exclude_unset=True, exclude={'password'})
+    for key, value in update_dict.items():
+        setattr(user, key, value)
+    
+    # Hash password if being updated
+    if user_data.password:
+        from passlib.context import CryptContext
+        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        user.password_hash = pwd_context.hash(user_data.password)
+    
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@setting_router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_settings_user(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Delete (deactivate) a user through settings module.
+    
+    Users are soft-deleted by setting is_active to False.
+    """
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with ID {user_id} not found"
+        )
+    
+    # Soft delete - set is_active to False
+    user.is_active = False
+    
+    db.commit()
+    return None
+
+
 # ========== Master Data Endpoints ==========
 @master_data_router.post("/", status_code=status.HTTP_201_CREATED)
 def create_master_data(data: dict, db: Session = Depends(get_db)):

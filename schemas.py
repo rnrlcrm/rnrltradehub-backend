@@ -48,6 +48,11 @@ class UserRole(str, Enum):
     VENDOR_CLIENT = "Vendor/Client"
 
 
+class UserType(str, Enum):
+    PRIMARY = "primary"
+    SUB_USER = "sub_user"
+
+
 # Base Schemas
 class AddressBase(BaseModel):
     address_line1: str
@@ -257,6 +262,53 @@ class UserCreate(UserBase):
 class UserResponse(UserBase):
     id: int
     is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Enhanced User Schemas for Settings Module
+class SettingsUserCreate(BaseModel):
+    """Schema for creating a user through the settings module."""
+    name: str
+    email: EmailStr
+    password: str
+    role_id: Optional[int] = None
+    user_type: Optional[UserType] = UserType.PRIMARY
+    client_id: Optional[str] = None
+    vendor_id: Optional[str] = None
+    parent_user_id: Optional[int] = None
+    max_sub_users: Optional[int] = 5
+
+
+class SettingsUserUpdate(BaseModel):
+    """Schema for updating a user through the settings module."""
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None
+    role_id: Optional[int] = None
+    is_active: Optional[bool] = None
+    user_type: Optional[UserType] = None
+    client_id: Optional[str] = None
+    vendor_id: Optional[str] = None
+    max_sub_users: Optional[int] = None
+
+
+class SettingsUserResponse(BaseModel):
+    """Schema for user response from the settings module."""
+    id: int
+    name: str
+    email: str
+    role_id: Optional[int] = None
+    role_name: Optional[str] = None
+    is_active: bool
+    user_type: str
+    client_id: Optional[str] = None
+    vendor_id: Optional[str] = None
+    parent_user_id: Optional[int] = None
+    max_sub_users: Optional[int] = None
     created_at: datetime
     updated_at: datetime
 
@@ -500,11 +552,6 @@ class LoginResponse(BaseModel):
     access_token: str
     token_type: str
     user: dict
-
-
-class UserType(str, Enum):
-    PRIMARY = "primary"
-    SUB_USER = "sub_user"
 
 
 # Team Management Schemas
