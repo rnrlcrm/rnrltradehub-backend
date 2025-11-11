@@ -14,18 +14,19 @@ logger = logging.getLogger(__name__)
 
 # Get database configuration from environment variables
 # Priority: DATABASE_URL > individual DB_* variables > default localhost
-db_host = os.getenv("DB_HOST")
-db_name = os.getenv("DB_NAME")
-db_user = os.getenv("DB_USER")
-db_password = os.getenv("DB_PASSWORD")
-db_port = os.getenv("DB_PORT", "5432")
+db_host = os.getenv("DB_HOST", "").strip()
+db_name = os.getenv("DB_NAME", "").strip()
+db_user = os.getenv("DB_USER", "").strip()
+db_password = os.getenv("DB_PASSWORD", "").strip()
+db_port = os.getenv("DB_PORT", "5432").strip()
 
 # Build DATABASE_URL based on available environment variables
-if os.getenv("DATABASE_URL"):
-    # Use DATABASE_URL if explicitly provided
-    DATABASE_URL = os.getenv("DATABASE_URL")
+database_url_env = os.getenv("DATABASE_URL", "").strip()
+if database_url_env:
+    # Use DATABASE_URL if explicitly provided and not empty
+    DATABASE_URL = database_url_env
 elif db_host and db_name and db_user and db_password:
-    # Build from individual components
+    # Build from individual components (all must be non-empty)
     # Check if DB_HOST is a Cloud SQL Unix socket path
     if db_host.startswith("/cloudsql/"):
         # Cloud SQL Unix socket connection format
@@ -37,14 +38,21 @@ elif db_host and db_name and db_user and db_password:
 else:
     # Default for local development
     DATABASE_URL = "postgresql://user:password@localhost:5432/rnrltradehub"
+    logger.warning(
+        "Database configuration incomplete. Using default localhost connection. "
+        "Please set DATABASE_URL or all of (DB_HOST, DB_NAME, DB_USER, DB_PASSWORD) "
+        "environment variables with non-empty values."
+    )
 
 # Log database configuration (without credentials)
 if "postgresql" in DATABASE_URL:
     logger.info("Database: PostgreSQL")
 elif "sqlite" in DATABASE_URL:
     logger.info("Database: SQLite")
+elif "mysql" in DATABASE_URL:
+    logger.info("Database: MySQL")
 else:
-    logger.info("Database: %s", DATABASE_URL.split(":")[0])
+    logger.info("Database: Other")
 
 # Create SQLAlchemy engine with robust configuration
 try:
@@ -76,7 +84,7 @@ Base = declarative_base()
 def get_db():
     """
     Dependency function to get database session.
-    
+
     This function is used as a dependency in FastAPI routes to provide
     a database session that is automatically closed after the request.
 
