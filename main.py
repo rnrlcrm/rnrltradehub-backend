@@ -72,6 +72,7 @@ async def http_exception_handler(request, exc):
     """
     Custom HTTP exception handler that returns JSON for all errors.
     This ensures FastAPI always returns JSON, never HTML.
+    Includes CORS headers to prevent CORS errors in browser.
     """
     return JSONResponse(
         status_code=exc.status_code,
@@ -79,26 +80,44 @@ async def http_exception_handler(request, exc):
             "detail": exc.detail,
             "status_code": exc.status_code,
             "framework": "FastAPI"
+        },
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Methods": "*",
+            "Access-Control-Allow-Headers": "*",
         }
     )
 
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc):
-    """Handle validation errors with detailed JSON response."""
+    """
+    Handle validation errors with detailed JSON response.
+    Includes CORS headers to prevent CORS errors in browser.
+    """
     return JSONResponse(
         status_code=422,
         content={
             "detail": exc.errors(),
             "body": exc.body,
             "framework": "FastAPI"
+        },
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Methods": "*",
+            "Access-Control-Allow-Headers": "*",
         }
     )
 
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request, exc):
-    """Catch-all exception handler for unexpected errors."""
+    """
+    Catch-all exception handler for unexpected errors.
+    Includes CORS headers to prevent CORS errors in browser.
+    """
     logger.error("Unhandled exception: %s", str(exc), exc_info=True)
     return JSONResponse(
         status_code=500,
@@ -106,6 +125,12 @@ async def general_exception_handler(request, exc):
             "detail": "Internal server error",
             "framework": "FastAPI",
             "error_type": type(exc).__name__
+        },
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Methods": "*",
+            "Access-Control-Allow-Headers": "*",
         }
     )
 
