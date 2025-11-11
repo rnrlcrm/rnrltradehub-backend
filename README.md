@@ -251,6 +251,8 @@ GET /api/email-logs/?status=failed
 | [MULTI_TENANT_FEATURES.md](MULTI_TENANT_FEATURES.md) | **Multi-tenant & team management guide (NEW)** |
 | [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) | Detailed schema (26 tables) with ERD |
 | [COMPLIANCE.md](COMPLIANCE.md) | **Compliance & security guide (NEW)** |
+| [CLOUD_RUN_DEPLOYMENT.md](CLOUD_RUN_DEPLOYMENT.md) | Cloud Run deployment guide |
+| [DEPLOYMENT_TROUBLESHOOTING.md](DEPLOYMENT_TROUBLESHOOTING.md) | **Deployment troubleshooting guide (NEW)** |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Development setup and guidelines |
 | `.env.example` | Environment configuration template |
 

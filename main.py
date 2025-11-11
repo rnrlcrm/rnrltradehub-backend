@@ -72,7 +72,15 @@ async def startup_event():
     the server from starting and listening on the port. This ensures Cloud Run
     health checks pass even if database initialization takes time or fails.
     """
-    logger.info("Application starting up...")
+    logger.info("="*60)
+    logger.info("RNRL TradeHub Backend API - Starting Up")
+    logger.info("="*60)
+    logger.info("Application: %s v%s", app.title, "1.0.0")
+    logger.info("Framework: FastAPI")
+    logger.info("Total Routes: %d", len(app.routes))
+    logger.info("Health Endpoint: /health")
+    logger.info("API Docs: /docs")
+    logger.info("="*60)
     
     def create_tables():
         """Create database tables in background thread."""

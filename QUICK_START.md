@@ -2,6 +2,21 @@
 
 This guide shows how to quickly test the settings/users API endpoints.
 
+## Prerequisites Check
+
+Before starting the server, verify everything is configured correctly:
+
+```bash
+# Run startup verification
+python verify_startup.py
+```
+
+This will check:
+- ✓ All required packages are installed
+- ✓ FastAPI application can be imported
+- ✓ All critical endpoints are registered
+- ✓ Database configuration is valid
+
 ## Starting the Server
 
 ```bash
