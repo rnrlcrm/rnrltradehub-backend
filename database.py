@@ -49,8 +49,10 @@ if "postgresql" in DATABASE_URL:
     logger.info("Database: PostgreSQL")
 elif "sqlite" in DATABASE_URL:
     logger.info("Database: SQLite")
+elif "mysql" in DATABASE_URL:
+    logger.info("Database: MySQL")
 else:
-    logger.info("Database: %s", DATABASE_URL.split(":")[0])
+    logger.info("Database: Other")
 
 # Create SQLAlchemy engine with robust configuration
 try:
