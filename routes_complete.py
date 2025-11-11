@@ -133,6 +133,112 @@ def delete_business_partner(partner_id: str, db: Session = Depends(get_db)):
     return None
 
 
+# ========== User Endpoints ==========
+@user_router.post("/", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
+def create_user(
+    user: schemas.UserCreate,
+    db: Session = Depends(get_db)
+):
+    """Create a new user."""
+    # Check if user already exists
+    existing_user = db.query(models.User).filter(models.User.email == user.email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    # Hash password
+    from passlib.context import CryptContext
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    hashed_password = pwd_context.hash(user.password)
+
+    db_user = models.User(
+        name=user.name,
+        email=user.email,
+        role_name=user.role,
+        password_hash=hashed_password
+    )
+
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+
+@user_router.get("/", response_model=List[schemas.UserResponse])
+def list_users(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    """List all users."""
+    users = db.query(models.User).offset(skip).limit(limit).all()
+    return users
+
+
+@user_router.get("/{user_id}", response_model=schemas.UserResponse)
+def get_user(user_id: int, db: Session = Depends(get_db)):
+    """Get a specific user by ID."""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+@user_router.put("/{user_id}", response_model=schemas.UserResponse)
+def update_user(
+    user_id: int,
+    user_data: schemas.UserUpdate,
+    db: Session = Depends(get_db)
+):
+    """Update a user."""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Validate email uniqueness if being updated
+    if user_data.email and user_data.email != user.email:
+        existing = db.query(models.User).filter(
+            models.User.email == user_data.email,
+            models.User.id != user_id
+        ).first()
+        if existing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"User with email {user_data.email} already exists"
+            )
+
+    # Update fields
+    update_dict = user_data.model_dump(exclude_unset=True, exclude={'password'})
+    for key, value in update_dict.items():
+        if key == 'role':
+            setattr(user, 'role_name', value)
+        else:
+            setattr(user, key, value)
+
+    # Hash password if being updated
+    if user_data.password:
+        from passlib.context import CryptContext
+        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        user.password_hash = pwd_context.hash(user_data.password)
+
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@user_router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(user_id: int, db: Session = Depends(get_db)):
+    """Delete (deactivate) a user."""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Soft delete - set is_active to False
+    user.is_active = False
+
+    db.commit()
+    return None
+
+
 # ========== Invoice Endpoints ==========
 @invoice_router.post("/", status_code=status.HTTP_201_CREATED)
 def create_invoice(invoice_data: dict, db: Session = Depends(get_db)):
