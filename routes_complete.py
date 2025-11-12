@@ -448,37 +448,47 @@ def list_settings_users(
     - isActive: Filter by active status (true/false)
     """
     from sqlalchemy.orm import joinedload
+    import logging
     
-    query = db.query(models.User).options(joinedload(models.User.role))
+    logger = logging.getLogger(__name__)
     
-    if userType:
-        query = query.filter(models.User.user_type == userType)
-    if isActive is not None:
-        query = query.filter(models.User.is_active == isActive)
-    
-    users = query.offset(skip).limit(limit).all()
-    
-    # Manually construct response to ensure role_name is properly populated
-    response_data = []
-    for user in users:
-        user_dict = {
-            "id": user.id,
-            "name": user.name,
-            "email": user.email,
-            "role_id": user.role_id,
-            "role_name": user.role.name if user.role else None,
-            "is_active": user.is_active,
-            "user_type": str(user.user_type) if hasattr(user.user_type, 'value') else user.user_type,
-            "client_id": user.client_id,
-            "vendor_id": user.vendor_id,
-            "parent_user_id": user.parent_user_id,
-            "max_sub_users": user.max_sub_users,
-            "created_at": user.created_at,
-            "updated_at": user.updated_at
-        }
-        response_data.append(user_dict)
-    
-    return response_data
+    try:
+        query = db.query(models.User).options(joinedload(models.User.role))
+        
+        if userType:
+            query = query.filter(models.User.user_type == userType)
+        if isActive is not None:
+            query = query.filter(models.User.is_active == isActive)
+        
+        users = query.offset(skip).limit(limit).all()
+        
+        # Manually construct response to ensure role_name is properly populated
+        response_data = []
+        for user in users:
+            user_dict = {
+                "id": user.id,
+                "name": user.name,
+                "email": user.email,
+                "role_id": user.role_id,
+                "role_name": user.role.name if user.role else None,
+                "is_active": user.is_active,
+                "user_type": user.user_type.value if hasattr(user.user_type, 'value') else str(user.user_type),
+                "client_id": user.client_id,
+                "vendor_id": user.vendor_id,
+                "parent_user_id": user.parent_user_id,
+                "max_sub_users": user.max_sub_users,
+                "created_at": user.created_at,
+                "updated_at": user.updated_at
+            }
+            response_data.append(user_dict)
+        
+        return response_data
+    except Exception as e:
+        logger.error(f"Error in list_settings_users: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve users: {str(e)}"
+        )
 
 
 @setting_router.post("/users", response_model=schemas.SettingsUserResponse, status_code=status.HTTP_201_CREATED)
@@ -555,7 +565,7 @@ def create_settings_user(
         "role_id": db_user.role_id,
         "role_name": db_user.role.name if db_user.role else None,
         "is_active": db_user.is_active,
-        "user_type": str(db_user.user_type) if hasattr(db_user.user_type, 'value') else db_user.user_type,
+        "user_type": db_user.user_type.value if hasattr(db_user.user_type, 'value') else str(db_user.user_type),
         "client_id": db_user.client_id,
         "vendor_id": db_user.vendor_id,
         "parent_user_id": db_user.parent_user_id,
@@ -631,7 +641,7 @@ def update_settings_user(
         "role_id": user.role_id,
         "role_name": user.role.name if user.role else None,
         "is_active": user.is_active,
-        "user_type": str(user.user_type) if hasattr(user.user_type, 'value') else user.user_type,
+        "user_type": user.user_type.value if hasattr(user.user_type, 'value') else str(user.user_type),
         "client_id": user.client_id,
         "vendor_id": user.vendor_id,
         "parent_user_id": user.parent_user_id,
