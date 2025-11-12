@@ -50,7 +50,7 @@ def test_empty_env_vars():
         import database
         
         # Check that it falls back to default
-        expected = "postgresql://user:password@localhost:5432/rnrltradehub"
+        expected = "postgresql+psycopg2://user:password@localhost:5432/rnrltradehub"
         if database.DATABASE_URL == expected:
             print("   ✓ PASS: Falls back to default with empty env vars")
             print(f"   URL: {database.DATABASE_URL}")
@@ -106,7 +106,7 @@ def test_empty_env_vars():
         import database as db3
         
         # Should use individual vars since DATABASE_URL is empty
-        expected_individual = "postgresql://validuser:validpass@validhost:5432/validdb"
+        expected_individual = "postgresql+psycopg2://validuser:validpass@validhost:5432/validdb"
         if db3.DATABASE_URL == expected_individual:
             print("   ✓ PASS: Uses individual vars when DATABASE_URL is empty")
             print(f"   URL: {db3.DATABASE_URL}")
@@ -134,7 +134,7 @@ def test_empty_env_vars():
         import database as db4
         
         # Should fall back to default since whitespace-only is treated as empty
-        expected = "postgresql://user:password@localhost:5432/rnrltradehub"
+        expected = "postgresql+psycopg2://user:password@localhost:5432/rnrltradehub"
         if db4.DATABASE_URL == expected:
             print("   ✓ PASS: Treats whitespace-only as empty")
             print(f"   URL: {db4.DATABASE_URL}")

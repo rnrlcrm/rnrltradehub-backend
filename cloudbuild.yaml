@@ -1,3 +1,10 @@
+# Cloud Build configuration for erp-nonprod-backend service
+# 
+# Database credentials setup:
+# - The database password is stored in Secret Manager as 'erp-nonprod-db-password'
+# - See DATABASE_CREDENTIALS_SETUP.md for complete setup instructions
+# - Update DB_NAME, DB_USER values below if your database configuration differs
+
 options:
   logging: CLOUD_LOGGING_ONLY
 
@@ -22,5 +29,8 @@ steps:
         '--memory=512Mi',
         '--cpu=1',
         '--min-instances=0',
-        '--max-instances=10'
+        '--max-instances=10',
+        '--add-cloudsql-instances=google-mpf-cas7ishusxmu:us-central1:erp-nonprod-db',
+        '--update-secrets=DB_PASSWORD=erp-nonprod-db-password:latest',
+        '--set-env-vars=DB_HOST=/cloudsql/google-mpf-cas7ishusxmu:us-central1:erp-nonprod-db,DB_NAME=erp_nonprod_db,DB_USER=postgres,DB_PORT=5432'
       ]
