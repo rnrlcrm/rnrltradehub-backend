@@ -30,14 +30,14 @@ elif db_host and db_name and db_user and db_password:
     # Check if DB_HOST is a Cloud SQL Unix socket path
     if db_host.startswith("/cloudsql/"):
         # Cloud SQL Unix socket connection format
-        # Format: postgresql://user:password@/dbname?host=/cloudsql/PROJECT:REGION:INSTANCE
-        DATABASE_URL = f"postgresql://{db_user}:{db_password}@/{db_name}?host={db_host}"
+        # Format: postgresql+psycopg2://user:password@/dbname?host=/cloudsql/PROJECT:REGION:INSTANCE
+        DATABASE_URL = f"postgresql+psycopg2://{db_user}:{db_password}@/{db_name}?host={db_host}"
     else:
         # Standard TCP connection format
-        DATABASE_URL = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+        DATABASE_URL = f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
 else:
     # Default for local development
-    DATABASE_URL = "postgresql://user:password@localhost:5432/rnrltradehub"
+    DATABASE_URL = "postgresql+psycopg2://user:password@localhost:5432/rnrltradehub"
     logger.warning(
         "Database configuration incomplete. Using default localhost connection. "
         "Please set DATABASE_URL or all of (DB_HOST, DB_NAME, DB_USER, DB_PASSWORD) "

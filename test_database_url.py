@@ -21,11 +21,11 @@ def test_database_url_construction():
     
     # Simulate the logic from database.py
     if db_host.startswith("/cloudsql/"):
-        url = f"postgresql://{db_user}:{db_password}@/{db_name}?host={db_host}"
+        url = f"postgresql+psycopg2://{db_user}:{db_password}@/{db_name}?host={db_host}"
     else:
-        url = f"postgresql://{db_user}:{db_password}@{db_host}:5432/{db_name}"
+        url = f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:5432/{db_name}"
     
-    expected = "postgresql://testuser:testpass@/testdb?host=/cloudsql/google-mpf-cas7ishusxmu:us-central1:erp-nonprod-db"
+    expected = "postgresql+psycopg2://testuser:testpass@/testdb?host=/cloudsql/google-mpf-cas7ishusxmu:us-central1:erp-nonprod-db"
     if url == expected:
         print(f"   ✓ PASS: Cloud SQL URL correctly formatted")
         print(f"   URL: {url}")
@@ -44,11 +44,11 @@ def test_database_url_construction():
     db_port = "5432"
     
     if db_host.startswith("/cloudsql/"):
-        url = f"postgresql://{db_user}:{db_password}@/{db_name}?host={db_host}"
+        url = f"postgresql+psycopg2://{db_user}:{db_password}@/{db_name}?host={db_host}"
     else:
-        url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+        url = f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
     
-    expected = "postgresql://user:password@localhost:5432/rnrltradehub"
+    expected = "postgresql+psycopg2://user:password@localhost:5432/rnrltradehub"
     if url == expected:
         print(f"   ✓ PASS: Localhost URL correctly formatted")
         print(f"   URL: {url}")
@@ -67,11 +67,11 @@ def test_database_url_construction():
     db_port = "5432"
     
     if db_host.startswith("/cloudsql/"):
-        url = f"postgresql://{db_user}:{db_password}@/{db_name}?host={db_host}"
+        url = f"postgresql+psycopg2://{db_user}:{db_password}@/{db_name}?host={db_host}"
     else:
-        url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+        url = f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
     
-    expected = "postgresql://admin:secret@10.0.0.5:5432/proddb"
+    expected = "postgresql+psycopg2://admin:secret@10.0.0.5:5432/proddb"
     if url == expected:
         print(f"   ✓ PASS: Remote server URL correctly formatted")
         print(f"   URL: {url}")
@@ -90,11 +90,11 @@ def test_database_url_construction():
     db_port = "5433"
     
     if db_host.startswith("/cloudsql/"):
-        url = f"postgresql://{db_user}:{db_password}@/{db_name}?host={db_host}"
+        url = f"postgresql+psycopg2://{db_user}:{db_password}@/{db_name}?host={db_host}"
     else:
-        url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+        url = f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
     
-    expected = "postgresql://dbuser:dbpass@db.example.com:5433/mydb"
+    expected = "postgresql+psycopg2://dbuser:dbpass@db.example.com:5433/mydb"
     if url == expected:
         print(f"   ✓ PASS: Custom port URL correctly formatted")
         print(f"   URL: {url}")
@@ -142,12 +142,12 @@ def test_database_module_import():
         
         import database
         
-        if database.DATABASE_URL == "postgresql://testuser:testpass@/testdb?host=/cloudsql/google-mpf-cas7ishusxmu:us-central1:erp-nonprod-db":
+        if database.DATABASE_URL == "postgresql+psycopg2://testuser:testpass@/testdb?host=/cloudsql/google-mpf-cas7ishusxmu:us-central1:erp-nonprod-db":
             print("   ✓ PASS: Cloud SQL DATABASE_URL correctly constructed")
             print(f"   URL: {database.DATABASE_URL}")
         else:
             print("   ✗ FAIL: Cloud SQL DATABASE_URL incorrect")
-            print(f"   Expected: postgresql://testuser:testpass@/testdb?host=/cloudsql/google-mpf-cas7ishusxmu:us-central1:erp-nonprod-db")
+            print(f"   Expected: postgresql+psycopg2://testuser:testpass@/testdb?host=/cloudsql/google-mpf-cas7ishusxmu:us-central1:erp-nonprod-db")
             print(f"   Got:      {database.DATABASE_URL}")
             return False
         
@@ -168,12 +168,12 @@ def test_database_module_import():
         
         import database as db2
         
-        if db2.DATABASE_URL == "postgresql://user:password@localhost:5432/rnrltradehub":
+        if db2.DATABASE_URL == "postgresql+psycopg2://user:password@localhost:5432/rnrltradehub":
             print("   ✓ PASS: Localhost DATABASE_URL correctly constructed")
             print(f"   URL: {db2.DATABASE_URL}")
         else:
             print("   ✗ FAIL: Localhost DATABASE_URL incorrect")
-            print(f"   Expected: postgresql://user:password@localhost:5432/rnrltradehub")
+            print(f"   Expected: postgresql+psycopg2://user:password@localhost:5432/rnrltradehub")
             print(f"   Got:      {db2.DATABASE_URL}")
             return False
         
