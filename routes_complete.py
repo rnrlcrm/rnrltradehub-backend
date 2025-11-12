@@ -447,7 +447,9 @@ def list_settings_users(
     - userType: Filter by user type (primary, sub_user)
     - isActive: Filter by active status (true/false)
     """
-    query = db.query(models.User)
+    from sqlalchemy.orm import joinedload
+    
+    query = db.query(models.User).options(joinedload(models.User.role))
     
     if userType:
         query = query.filter(models.User.user_type == userType)
@@ -455,7 +457,28 @@ def list_settings_users(
         query = query.filter(models.User.is_active == isActive)
     
     users = query.offset(skip).limit(limit).all()
-    return users
+    
+    # Manually construct response to ensure role_name is properly populated
+    response_data = []
+    for user in users:
+        user_dict = {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "role_id": user.role_id,
+            "role_name": user.role.name if user.role else None,
+            "is_active": user.is_active,
+            "user_type": str(user.user_type) if hasattr(user.user_type, 'value') else user.user_type,
+            "client_id": user.client_id,
+            "vendor_id": user.vendor_id,
+            "parent_user_id": user.parent_user_id,
+            "max_sub_users": user.max_sub_users,
+            "created_at": user.created_at,
+            "updated_at": user.updated_at
+        }
+        response_data.append(user_dict)
+    
+    return response_data
 
 
 @setting_router.post("/users", response_model=schemas.SettingsUserResponse, status_code=status.HTTP_201_CREATED)
@@ -518,7 +541,28 @@ def create_settings_user(
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
-    return db_user
+    
+    # Manually construct response to ensure role_name is properly populated
+    from sqlalchemy.orm import joinedload
+    db_user = db.query(models.User).options(joinedload(models.User.role)).filter(
+        models.User.id == db_user.id
+    ).first()
+    
+    return {
+        "id": db_user.id,
+        "name": db_user.name,
+        "email": db_user.email,
+        "role_id": db_user.role_id,
+        "role_name": db_user.role.name if db_user.role else None,
+        "is_active": db_user.is_active,
+        "user_type": str(db_user.user_type) if hasattr(db_user.user_type, 'value') else db_user.user_type,
+        "client_id": db_user.client_id,
+        "vendor_id": db_user.vendor_id,
+        "parent_user_id": db_user.parent_user_id,
+        "max_sub_users": db_user.max_sub_users,
+        "created_at": db_user.created_at,
+        "updated_at": db_user.updated_at
+    }
 
 
 @setting_router.put("/users/{user_id}", response_model=schemas.SettingsUserResponse)
@@ -573,7 +617,28 @@ def update_settings_user(
     
     db.commit()
     db.refresh(user)
-    return user
+    
+    # Manually construct response to ensure role_name is properly populated
+    from sqlalchemy.orm import joinedload
+    user = db.query(models.User).options(joinedload(models.User.role)).filter(
+        models.User.id == user_id
+    ).first()
+    
+    return {
+        "id": user.id,
+        "name": user.name,
+        "email": user.email,
+        "role_id": user.role_id,
+        "role_name": user.role.name if user.role else None,
+        "is_active": user.is_active,
+        "user_type": str(user.user_type) if hasattr(user.user_type, 'value') else user.user_type,
+        "client_id": user.client_id,
+        "vendor_id": user.vendor_id,
+        "parent_user_id": user.parent_user_id,
+        "max_sub_users": user.max_sub_users,
+        "created_at": user.created_at,
+        "updated_at": user.updated_at
+    }
 
 
 @setting_router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
