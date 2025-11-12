@@ -137,6 +137,155 @@ def delete_business_partner(partner_id: str, db: Session = Depends(get_db)):
     return None
 
 
+# ========== Business Branch Endpoints (Multi-Branch Support) ==========
+@business_partner_router.post("/{partner_id}/branches", response_model=schemas.BusinessBranchResponse, status_code=status.HTTP_201_CREATED)
+def create_branch(
+    partner_id: str,
+    branch: schemas.BusinessBranchCreate,
+    db: Session = Depends(get_db)
+):
+    """Create a new branch for a business partner."""
+    # Check if partner exists
+    partner = db.query(models.BusinessPartner).filter(models.BusinessPartner.id == partner_id).first()
+    if not partner:
+        raise HTTPException(status_code=404, detail="Business partner not found")
+    
+    # Check if GST number already exists
+    existing_gst = db.query(models.BusinessBranch).filter(
+        models.BusinessBranch.gst_number == branch.gst_number
+    ).first()
+    if existing_gst:
+        raise HTTPException(status_code=400, detail="GST number already exists")
+    
+    # Check if trying to set as head office and one already exists
+    if branch.is_head_office:
+        existing_head_office = db.query(models.BusinessBranch).filter(
+            models.BusinessBranch.partner_id == partner_id,
+            models.BusinessBranch.is_head_office == True
+        ).first()
+        if existing_head_office:
+            raise HTTPException(status_code=400, detail="Partner already has a head office")
+    
+    # Create new branch
+    db_branch = models.BusinessBranch(
+        id=str(uuid.uuid4()),
+        partner_id=partner_id,
+        **branch.model_dump()
+    )
+    
+    db.add(db_branch)
+    db.commit()
+    db.refresh(db_branch)
+    
+    return db_branch
+
+
+@business_partner_router.get("/{partner_id}/branches", response_model=List[schemas.BusinessBranchResponse])
+def list_branches(
+    partner_id: str,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    """List all branches for a business partner."""
+    partner = db.query(models.BusinessPartner).filter(models.BusinessPartner.id == partner_id).first()
+    if not partner:
+        raise HTTPException(status_code=404, detail="Business partner not found")
+    
+    branches = db.query(models.BusinessBranch).filter(
+        models.BusinessBranch.partner_id == partner_id
+    ).offset(skip).limit(limit).all()
+    
+    return branches
+
+
+@business_partner_router.get("/{partner_id}/branches/{branch_id}", response_model=schemas.BusinessBranchResponse)
+def get_branch(
+    partner_id: str,
+    branch_id: str,
+    db: Session = Depends(get_db)
+):
+    """Get a specific branch by ID."""
+    branch = db.query(models.BusinessBranch).filter(
+        models.BusinessBranch.id == branch_id,
+        models.BusinessBranch.partner_id == partner_id
+    ).first()
+    
+    if not branch:
+        raise HTTPException(status_code=404, detail="Branch not found")
+    
+    return branch
+
+
+@business_partner_router.put("/{partner_id}/branches/{branch_id}", response_model=schemas.BusinessBranchResponse)
+def update_branch(
+    partner_id: str,
+    branch_id: str,
+    branch_update: schemas.BusinessBranchUpdate,
+    db: Session = Depends(get_db)
+):
+    """Update a branch."""
+    db_branch = db.query(models.BusinessBranch).filter(
+        models.BusinessBranch.id == branch_id,
+        models.BusinessBranch.partner_id == partner_id
+    ).first()
+    
+    if not db_branch:
+        raise HTTPException(status_code=404, detail="Branch not found")
+    
+    # Update fields
+    update_data = branch_update.model_dump(exclude_unset=True)
+    
+    # Check GST uniqueness if updating
+    if "gst_number" in update_data:
+        existing_gst = db.query(models.BusinessBranch).filter(
+            models.BusinessBranch.gst_number == update_data["gst_number"],
+            models.BusinessBranch.id != branch_id
+        ).first()
+        if existing_gst:
+            raise HTTPException(status_code=400, detail="GST number already exists")
+    
+    # Check head office constraint if updating
+    if "is_head_office" in update_data and update_data["is_head_office"]:
+        existing_head_office = db.query(models.BusinessBranch).filter(
+            models.BusinessBranch.partner_id == partner_id,
+            models.BusinessBranch.is_head_office == True,
+            models.BusinessBranch.id != branch_id
+        ).first()
+        if existing_head_office:
+            raise HTTPException(status_code=400, detail="Partner already has a head office")
+    
+    for field, value in update_data.items():
+        setattr(db_branch, field, value)
+    
+    db.commit()
+    db.refresh(db_branch)
+    
+    return db_branch
+
+
+@business_partner_router.delete("/{partner_id}/branches/{branch_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_branch(
+    partner_id: str,
+    branch_id: str,
+    db: Session = Depends(get_db)
+):
+    """Delete a branch (soft delete by setting is_active=False)."""
+    db_branch = db.query(models.BusinessBranch).filter(
+        models.BusinessBranch.id == branch_id,
+        models.BusinessBranch.partner_id == partner_id
+    ).first()
+    
+    if not db_branch:
+        raise HTTPException(status_code=404, detail="Branch not found")
+    
+    # Soft delete
+    db_branch.is_active = False
+    db.commit()
+    
+    return None
+
+
 # ========== User Endpoints ==========
 @user_router.post("/", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
 def create_user(
