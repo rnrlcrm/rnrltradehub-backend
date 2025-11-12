@@ -32,5 +32,5 @@ steps:
         '--max-instances=10',
         '--add-cloudsql-instances=google-mpf-cas7ishusxmu:us-central1:erp-nonprod-db',
         '--update-secrets=DB_PASSWORD=erp-nonprod-db-password:latest',
-        '--set-env-vars=DB_HOST=/cloudsql/google-mpf-cas7ishusxmu:us-central1:erp-nonprod-db,DB_NAME=erp_nonprod,DB_USER=erp_user,DB_PORT=5432'
+        '--set-env-vars=DB_HOST=/cloudsql/google-mpf-cas7ishusxmu:us-central1:erp-nonprod-db,DB_NAME=erp_nonprod_db,DB_USER=postgres,DB_PORT=5432'
       ]
