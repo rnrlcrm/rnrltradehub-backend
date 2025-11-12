@@ -14,6 +14,7 @@ from database import get_db
 import models
 import schemas
 from utils import hash_password
+from crud_helpers import get_entity_by_id, check_entity_exists, hard_delete_entity, soft_delete_entity
 
 
 logger = logging.getLogger(__name__)
@@ -101,10 +102,12 @@ def list_business_partners(
 @business_partner_router.get("/{partner_id}", response_model=schemas.BusinessPartnerResponse)
 def get_business_partner(partner_id: str, db: Session = Depends(get_db)):
     """Get a specific business partner by ID."""
-    partner = db.query(models.BusinessPartner).filter(models.BusinessPartner.id == partner_id).first()
-    if not partner:
-        raise HTTPException(status_code=404, detail="Business partner not found")
-    return partner
+    return get_entity_by_id(
+        db=db,
+        model=models.BusinessPartner,
+        entity_id=partner_id,
+        entity_name="Business partner"
+    )
 
 
 @business_partner_router.put("/{partner_id}", response_model=schemas.BusinessPartnerResponse)
@@ -114,9 +117,12 @@ def update_business_partner(
     db: Session = Depends(get_db)
 ):
     """Update a business partner."""
-    db_partner = db.query(models.BusinessPartner).filter(models.BusinessPartner.id == partner_id).first()
-    if not db_partner:
-        raise HTTPException(status_code=404, detail="Business partner not found")
+    db_partner = get_entity_by_id(
+        db=db,
+        model=models.BusinessPartner,
+        entity_id=partner_id,
+        entity_name="Business partner"
+    )
 
     for key, value in partner_update.model_dump(exclude={'shipping_addresses'}).items():
         setattr(db_partner, key, value)
@@ -129,12 +135,14 @@ def update_business_partner(
 @business_partner_router.delete("/{partner_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_business_partner(partner_id: str, db: Session = Depends(get_db)):
     """Delete a business partner."""
-    db_partner = db.query(models.BusinessPartner).filter(models.BusinessPartner.id == partner_id).first()
-    if not db_partner:
-        raise HTTPException(status_code=404, detail="Business partner not found")
-
-    db.delete(db_partner)
-    db.commit()
+    db_partner = get_entity_by_id(
+        db=db,
+        model=models.BusinessPartner,
+        entity_id=partner_id,
+        entity_name="Business partner"
+    )
+    
+    hard_delete_entity(db=db, entity=db_partner)
     return None
 
 
@@ -329,10 +337,12 @@ def list_users(
 @user_router.get("/{user_id}", response_model=schemas.UserResponse)
 def get_user(user_id: int, db: Session = Depends(get_db)):
     """Get a specific user by ID."""
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
+    return get_entity_by_id(
+        db=db,
+        model=models.User,
+        entity_id=user_id,
+        entity_name="User"
+    )
 
 
 @user_router.put("/{user_id}", response_model=schemas.UserResponse)
@@ -342,9 +352,12 @@ def update_user(
     db: Session = Depends(get_db)
 ):
     """Update a user."""
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    user = get_entity_by_id(
+        db=db,
+        model=models.User,
+        entity_id=user_id,
+        entity_name="User"
+    )
 
     # Validate email uniqueness if being updated
     if user_data.email and user_data.email != user.email:
@@ -378,14 +391,16 @@ def update_user(
 @user_router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(user_id: int, db: Session = Depends(get_db)):
     """Delete (deactivate) a user."""
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    user = get_entity_by_id(
+        db=db,
+        model=models.User,
+        entity_id=user_id,
+        entity_name="User"
+    )
 
     # Soft delete - set is_active to False
-    user.is_active = False
+    soft_delete_entity(db=db, entity=user, active_field="is_active")
 
-    db.commit()
     return None
 
 
@@ -418,18 +433,23 @@ def list_invoices(
 @invoice_router.get("/{invoice_id}")
 def get_invoice(invoice_id: str, db: Session = Depends(get_db)):
     """Get a specific invoice."""
-    invoice = db.query(models.Invoice).filter(models.Invoice.id == invoice_id).first()
-    if not invoice:
-        raise HTTPException(status_code=404, detail="Invoice not found")
-    return invoice
+    return get_entity_by_id(
+        db=db,
+        model=models.Invoice,
+        entity_id=invoice_id,
+        entity_name="Invoice"
+    )
 
 
 @invoice_router.put("/{invoice_id}")
 def update_invoice(invoice_id: str, invoice_data: dict, db: Session = Depends(get_db)):
     """Update an invoice."""
-    db_invoice = db.query(models.Invoice).filter(models.Invoice.id == invoice_id).first()
-    if not db_invoice:
-        raise HTTPException(status_code=404, detail="Invoice not found")
+    db_invoice = get_entity_by_id(
+        db=db,
+        model=models.Invoice,
+        entity_id=invoice_id,
+        entity_name="Invoice"
+    )
 
     for key, value in invoice_data.items():
         setattr(db_invoice, key, value)
@@ -460,10 +480,12 @@ def list_payments(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
 @payment_router.get("/{payment_id}")
 def get_payment(payment_id: str, db: Session = Depends(get_db)):
     """Get a specific payment."""
-    payment = db.query(models.Payment).filter(models.Payment.id == payment_id).first()
-    if not payment:
-        raise HTTPException(status_code=404, detail="Payment not found")
-    return payment
+    return get_entity_by_id(
+        db=db,
+        model=models.Payment,
+        entity_id=payment_id,
+        entity_name="Payment"
+    )
 
 
 # ========== Dispute Endpoints ==========
@@ -495,18 +517,23 @@ def list_disputes(
 @dispute_router.get("/{dispute_id}")
 def get_dispute(dispute_id: str, db: Session = Depends(get_db)):
     """Get a specific dispute."""
-    dispute = db.query(models.Dispute).filter(models.Dispute.id == dispute_id).first()
-    if not dispute:
-        raise HTTPException(status_code=404, detail="Dispute not found")
-    return dispute
+    return get_entity_by_id(
+        db=db,
+        model=models.Dispute,
+        entity_id=dispute_id,
+        entity_name="Dispute"
+    )
 
 
 @dispute_router.put("/{dispute_id}")
 def update_dispute(dispute_id: str, dispute_data: dict, db: Session = Depends(get_db)):
     """Update a dispute."""
-    db_dispute = db.query(models.Dispute).filter(models.Dispute.id == dispute_id).first()
-    if not db_dispute:
-        raise HTTPException(status_code=404, detail="Dispute not found")
+    db_dispute = get_entity_by_id(
+        db=db,
+        model=models.Dispute,
+        entity_id=dispute_id,
+        entity_name="Dispute"
+    )
 
     for key, value in dispute_data.items():
         setattr(db_dispute, key, value)
@@ -545,10 +572,12 @@ def list_commissions(
 @commission_router.get("/{commission_id}")
 def get_commission(commission_id: str, db: Session = Depends(get_db)):
     """Get a specific commission."""
-    commission = db.query(models.Commission).filter(models.Commission.id == commission_id).first()
-    if not commission:
-        raise HTTPException(status_code=404, detail="Commission not found")
-    return commission
+    return get_entity_by_id(
+        db=db,
+        model=models.Commission,
+        entity_id=commission_id,
+        entity_name="Commission"
+    )
 
 
 # ========== Role & Permission Endpoints ==========
@@ -571,10 +600,12 @@ def list_roles(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
 @role_router.get("/{role_id}")
 def get_role(role_id: int, db: Session = Depends(get_db)):
     """Get a specific role with permissions."""
-    role = db.query(models.Role).filter(models.Role.id == role_id).first()
-    if not role:
-        raise HTTPException(status_code=404, detail="Role not found")
-    return role
+    return get_entity_by_id(
+        db=db,
+        model=models.Role,
+        entity_id=role_id,
+        entity_name="Role"
+    )
 
 
 # ========== Settings Endpoints ==========
