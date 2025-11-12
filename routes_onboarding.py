@@ -16,6 +16,8 @@ from database import get_db
 import models
 import schemas
 from routes_auth import get_current_user
+from services.automation_service import AutomationService
+from services.validation_service import ValidationService
 
 router = APIRouter(prefix="/api/onboarding", tags=["Onboarding"])
 
@@ -35,7 +37,23 @@ def submit_application(
     Submit a self-service onboarding application.
     
     This endpoint is public (no authentication required) to allow new business partners to apply.
+    Includes validation of PAN, GST, phone, and email.
     """
+    # Validate the application data
+    validation_data = {
+        "pan": application.compliance_info.get("pan"),
+        "gstin": application.compliance_info.get("gst"),
+        "contact_phone": application.contact_info.get("phone"),
+        "contact_email": application.contact_info.get("email")
+    }
+    
+    is_valid, errors = ValidationService.validate_business_partner_data(validation_data)
+    if not is_valid:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Validation errors: {'; '.join(errors)}"
+        )
+    
     # Create new application
     db_application = models.OnboardingApplication(
         id=str(uuid.uuid4()),
@@ -52,7 +70,7 @@ def submit_application(
     db.commit()
     db.refresh(db_application)
     
-    # TODO: Send notification email to admin
+    # TODO: Send notification email to admin (Phase 4)
     
     return db_application
 
@@ -132,7 +150,7 @@ def review_application(
     Review an onboarding application (admin only).
     
     Actions:
-    - APPROVED: Create business partner and user account
+    - APPROVED: Auto-create business partner, branches, and user account
     - REJECTED: Reject with reason
     """
     db_application = db.query(models.OnboardingApplication).filter(
@@ -151,15 +169,23 @@ def review_application(
     db_application.reviewed_by = current_user.id
     db_application.reviewed_at = datetime.utcnow()
     
-    # If approved, create business partner and user
+    # If approved, auto-create partner and user using automation service
     if review.status == "APPROVED":
-        # TODO: Implement auto-creation of business partner and user
-        # This will be done in Phase 3 (Automation Services)
-        pass
+        result = AutomationService.process_approved_onboarding(
+            db=db,
+            application=db_application,
+            reviewed_by_user_id=current_user.id
+        )
+        
+        if result.get("status") == "error":
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to create partner: {result.get('error')}"
+            )
     
     db.commit()
     db.refresh(db_application)
     
-    # TODO: Send notification email to applicant
+    # TODO: Send notification email to applicant (Phase 4)
     
     return db_application

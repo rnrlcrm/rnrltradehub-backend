@@ -5,6 +5,7 @@ This module provides endpoints for:
 - Requesting amendments to entities
 - Reviewing and approving/rejecting amendments
 - Viewing amendment history
+- Auto-approval for low-risk changes
 """
 import uuid
 from typing import List
@@ -16,6 +17,7 @@ from database import get_db
 import models
 import schemas
 from routes_auth import get_current_user
+from services.automation_service import AutomationService
 
 router = APIRouter(prefix="/api/amendments", tags=["Amendments"])
 
@@ -31,6 +33,8 @@ def create_amendment_request(
     
     Supported entity types: business_partner, branch, user
     Request types: UPDATE, DELETE
+    
+    Includes automatic risk assessment and auto-approval for low-risk changes.
     """
     # Validate entity exists
     entity_model = {
@@ -60,6 +64,15 @@ def create_amendment_request(
     )
     
     db.add(db_request)
+    db.flush()
+    
+    # Try auto-approval for low-risk changes
+    auto_approved = AutomationService.auto_approve_amendment(db, db_request)
+    
+    if auto_approved:
+        db.refresh(db_request)
+        return db_request
+    
     db.commit()
     db.refresh(db_request)
     
