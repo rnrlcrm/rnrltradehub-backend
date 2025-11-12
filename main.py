@@ -24,6 +24,7 @@ from sqlalchemy import text
 
 from database import get_db, engine, Base
 from schemas import HealthCheckResponse
+from utils import get_cors_headers
 from routes_complete import (
     business_partner_router,
     sales_contract_router,
@@ -85,12 +86,7 @@ async def http_exception_handler(request, exc):
             "status_code": exc.status_code,
             "framework": "FastAPI"
         },
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Credentials": "true",
-            "Access-Control-Allow-Methods": "*",
-            "Access-Control-Allow-Headers": "*",
-        }
+        headers=get_cors_headers()
     )
 
 
@@ -107,12 +103,7 @@ async def validation_exception_handler(request, exc):
             "body": exc.body,
             "framework": "FastAPI"
         },
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Credentials": "true",
-            "Access-Control-Allow-Methods": "*",
-            "Access-Control-Allow-Headers": "*",
-        }
+        headers=get_cors_headers()
     )
 
 
@@ -130,12 +121,7 @@ async def general_exception_handler(request, exc):
             "framework": "FastAPI",
             "error_type": type(exc).__name__
         },
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Credentials": "true",
-            "Access-Control-Allow-Methods": "*",
-            "Access-Control-Allow-Headers": "*",
-        }
+        headers=get_cors_headers()
     )
 
 
