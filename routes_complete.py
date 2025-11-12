@@ -5,6 +5,7 @@ This module contains full CRUD endpoints for all entities with proper
 error handling, validation, and business logic.
 """
 import uuid
+import logging
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
@@ -12,6 +13,9 @@ from sqlalchemy.orm import Session
 from database import get_db
 import models
 import schemas
+
+
+logger = logging.getLogger(__name__)
 
 
 # Create routers for all entities
@@ -448,9 +452,6 @@ def list_settings_users(
     - isActive: Filter by active status (true/false)
     """
     from sqlalchemy.orm import joinedload
-    import logging
-    
-    logger = logging.getLogger(__name__)
     
     try:
         query = db.query(models.User).options(joinedload(models.User.role))

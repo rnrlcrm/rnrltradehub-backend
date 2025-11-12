@@ -53,16 +53,13 @@ def test_enum_conversion_logic():
         # This is the OLD BUGGY logic
         result = str(input_val) if hasattr(input_val, 'value') else input_val
         
-        # For Python Enum, str() returns "UserType.PRIMARY" not "primary"
-        buggy_result = result if isinstance(result, str) else str(result)
-        
-        status = "✓" if buggy_result == expected else "✗"
+        status = "✓" if result == expected else "✗"
         
         print(f"\n  {status} {name}:")
         print(f"      Input:    {input_val} ({type(input_val).__name__})")
         print(f"      Expected: {expected}")
-        print(f"      Got:      {buggy_result}")
-        if buggy_result != expected:
+        print(f"      Got:      {result}")
+        if result != expected:
             print(f"      ⚠️  BUG! This would cause serialization error")
     
     print("\n" + "=" * 70)
