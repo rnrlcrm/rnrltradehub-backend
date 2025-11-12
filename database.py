@@ -45,6 +45,15 @@ else:
     )
 
 # Log database configuration (without credentials)
+logger.info("---- DATABASE DEBUG START ----")
+logger.info(f"DB_HOST: {db_host}")
+logger.info(f"DB_NAME: {db_name}")
+logger.info(f"DB_USER: {db_user}")
+logger.info(f"DB_PORT: {db_port}")
+logger.info(f"Using Cloud SQL socket: {'/cloudsql/' in db_host}")
+logger.info(f"Final DATABASE_URL (masked): {DATABASE_URL.replace(db_password, '***') if db_password else DATABASE_URL}")
+logger.info("---- DATABASE DEBUG END ----")
+
 if "postgresql" in DATABASE_URL:
     logger.info("Database: PostgreSQL")
 elif "sqlite" in DATABASE_URL:
