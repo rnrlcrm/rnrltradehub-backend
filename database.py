@@ -99,8 +99,21 @@ def get_db():
 
     Yields:
         Session: SQLAlchemy database session.
+    
+    Raises:
+        HTTPException: If database connection cannot be established.
     """
-    db = SessionLocal()
+    from fastapi import HTTPException
+    
+    try:
+        db = SessionLocal()
+    except Exception as e:
+        logger.error("Failed to create database session: %s", str(e), exc_info=True)
+        raise HTTPException(
+            status_code=503,
+            detail="Database connection unavailable. Please try again later."
+        )
+    
     try:
         yield db
     except Exception as e:
