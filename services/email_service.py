@@ -8,6 +8,7 @@ This service handles:
 - KYC reminder emails
 - Email template rendering
 - Email logging
+- SMTP integration
 """
 import uuid
 from typing import Optional, Dict
@@ -16,6 +17,7 @@ import logging
 
 import models
 import schemas
+from services.smtp_service import SMTPEmailSender
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +128,21 @@ class EmailService:
             db.add(email_log)
             db.commit()
             
-            # TODO: Integrate with actual email service (SendGrid, SES, etc.)
+            # Send email via SMTP if enabled
+            if SMTPEmailSender.SMTP_ENABLED:
+                success = SMTPEmailSender.send_email(
+                    to_email=sub_user.email,
+                    subject=subject,
+                    body_html=body_html,
+                    body_text=body_text
+                )
+                if success:
+                    email_log.status = "sent"
+                    email_log.sent_at = models.datetime.utcnow()
+                else:
+                    email_log.status = "failed"
+                db.commit()
+            
             logger.info(f"Invitation email queued for {sub_user.email}")
             
             return True

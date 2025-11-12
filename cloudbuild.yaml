@@ -32,6 +32,6 @@ steps:
         '--max-instances=10',
         '--service-account=502095789065-compute@developer.gserviceaccount.com',
         '--add-cloudsql-instances=google-mpf-cas7ishusxmu:us-central1:erp-nonprod-db',
-        '--update-secrets=DB_PASSWORD=erp-nonprod-db-password:latest',
-        '--set-env-vars=DB_HOST=/cloudsql/google-mpf-cas7ishusxmu:us-central1:erp-nonprod-db,DB_NAME=erp_nonprod_db,DB_USER=postgres,DB_PORT=5432'
+        '--update-secrets=DB_PASSWORD=erp-nonprod-db-password:latest,SMTP_PASSWORD=smtp-password:latest,CRON_SECRET=cron-secret:latest',
+        '--set-env-vars=DB_HOST=/cloudsql/google-mpf-cas7ishusxmu:us-central1:erp-nonprod-db,DB_NAME=erp_nonprod_db,DB_USER=postgres,DB_PORT=5432,SMTP_ENABLED=false,SMTP_HOST=smtp.gmail.com,SMTP_PORT=587,SMTP_FROM_EMAIL=noreply@rnrltradehub.com,SMTP_FROM_NAME=RNRL TradeHub'
       ]
