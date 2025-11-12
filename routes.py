@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 import models
 import schemas
+from utils import hash_password
 
 
 # Create routers
@@ -159,9 +160,7 @@ def create_user(
         raise HTTPException(status_code=400, detail="Email already registered")
 
     # In production, hash the password properly
-    from passlib.context import CryptContext
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    hashed_password = pwd_context.hash(user.password)
+    hashed_password = hash_password(user.password)
 
     db_user = models.User(
         name=user.name,

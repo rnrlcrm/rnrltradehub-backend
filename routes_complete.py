@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 import models
 import schemas
+from utils import hash_password
 
 
 logger = logging.getLogger(__name__)
@@ -299,9 +300,7 @@ def create_user(
         raise HTTPException(status_code=400, detail="Email already registered")
 
     # Hash password
-    from passlib.context import CryptContext
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    hashed_password = pwd_context.hash(user.password)
+    hashed_password = hash_password(user.password)
 
     db_user = models.User(
         name=user.name,
@@ -369,9 +368,7 @@ def update_user(
 
     # Hash password if being updated
     if user_data.password:
-        from passlib.context import CryptContext
-        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-        user.password_hash = pwd_context.hash(user_data.password)
+        user.password_hash = hash_password(user_data.password)
 
     db.commit()
     db.refresh(user)
@@ -688,9 +685,7 @@ def create_settings_user(
             )
     
     # Hash password
-    from passlib.context import CryptContext
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    hashed_password = pwd_context.hash(user_data.password)
+    hashed_password = hash_password(user_data.password)
     
     # Create user
     db_user = models.User(
@@ -771,9 +766,7 @@ def update_settings_user(
     
     # Hash password if being updated
     if user_data.password:
-        from passlib.context import CryptContext
-        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-        user.password_hash = pwd_context.hash(user_data.password)
+        user.password_hash = hash_password(user_data.password)
     
     db.commit()
     db.refresh(user)
