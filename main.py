@@ -51,6 +51,10 @@ from routes_complete import (
 )
 from routes_export import export_router
 from routes_auth import auth_router, team_router
+from routes_onboarding import router as onboarding_router
+from routes_amendments import router as amendment_router
+from routes_kyc import router as kyc_router
+from routes_scheduler import router as scheduler_router
 
 # Configure logging
 logging.basicConfig(
@@ -221,6 +225,12 @@ app.include_router(export_router)
 # Authentication & Team Management
 app.include_router(auth_router)
 app.include_router(team_router)
+
+# Enhanced Access Control Features (Phase 2-3)
+app.include_router(onboarding_router)
+app.include_router(amendment_router)
+app.include_router(kyc_router)
+app.include_router(scheduler_router)
 
 
 @app.get("/")

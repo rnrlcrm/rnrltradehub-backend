@@ -612,3 +612,308 @@ class UserAuditLogResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ========== NEW SCHEMAS FOR ENHANCED ACCESS CONTROL (PHASE 2) ==========
+
+# Business Branch Schemas
+class BusinessBranchBase(BaseModel):
+    branch_code: str
+    branch_name: str
+    state: str
+    gst_number: str
+    address: dict
+    contact_person: Optional[dict] = None
+    bank_details: Optional[dict] = None
+    is_head_office: bool = False
+    is_active: bool = True
+
+
+class BusinessBranchCreate(BusinessBranchBase):
+    partner_id: str
+
+
+class BusinessBranchUpdate(BaseModel):
+    branch_name: Optional[str] = None
+    state: Optional[str] = None
+    gst_number: Optional[str] = None
+    address: Optional[dict] = None
+    contact_person: Optional[dict] = None
+    bank_details: Optional[dict] = None
+    is_head_office: Optional[bool] = None
+    is_active: Optional[bool] = None
+
+
+class BusinessBranchResponse(BusinessBranchBase):
+    id: str
+    partner_id: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Amendment Request Schemas
+class AmendmentRequestBase(BaseModel):
+    entity_type: str
+    entity_id: str
+    request_type: str
+    reason: str
+    justification: Optional[str] = None
+    changes: dict
+
+
+class AmendmentRequestCreate(AmendmentRequestBase):
+    pass
+
+
+class AmendmentRequestReview(BaseModel):
+    status: str  # APPROVED or REJECTED
+    review_notes: Optional[str] = None
+
+
+class AmendmentRequestResponse(AmendmentRequestBase):
+    id: str
+    requested_by: int
+    requested_at: datetime
+    status: str
+    reviewed_by: Optional[int] = None
+    reviewed_at: Optional[datetime] = None
+    review_notes: Optional[str] = None
+    impact_assessment: Optional[dict] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Onboarding Application Schemas
+class OnboardingApplicationBase(BaseModel):
+    company_info: dict
+    contact_info: dict
+    compliance_info: dict
+    branch_info: Optional[dict] = None
+    documents: Optional[dict] = None
+
+
+class OnboardingApplicationCreate(OnboardingApplicationBase):
+    pass
+
+
+class OnboardingApplicationReview(BaseModel):
+    status: str  # APPROVED or REJECTED
+    review_notes: Optional[str] = None
+
+
+class OnboardingApplicationResponse(OnboardingApplicationBase):
+    id: str
+    application_number: str
+    status: str
+    review_notes: Optional[str] = None
+    reviewed_by: Optional[int] = None
+    reviewed_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Profile Update Request Schemas
+class ProfileUpdateRequestBase(BaseModel):
+    update_type: str
+    old_values: dict
+    new_values: dict
+    reason: Optional[str] = None
+
+
+class ProfileUpdateRequestCreate(ProfileUpdateRequestBase):
+    partner_id: Optional[str] = None
+
+
+class ProfileUpdateRequestReview(BaseModel):
+    status: str  # APPROVED or REJECTED
+    review_notes: Optional[str] = None
+
+
+class ProfileUpdateRequestResponse(ProfileUpdateRequestBase):
+    id: str
+    user_id: int
+    partner_id: Optional[str] = None
+    status: str
+    reviewed_by: Optional[int] = None
+    reviewed_at: Optional[datetime] = None
+    review_notes: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# KYC Verification Schemas
+class KYCVerificationBase(BaseModel):
+    partner_id: str
+    verification_date: datetime
+    documents_checked: dict
+    status: str
+    next_due_date: datetime
+    notes: Optional[str] = None
+
+
+class KYCVerificationCreate(KYCVerificationBase):
+    pass
+
+
+class KYCVerificationResponse(KYCVerificationBase):
+    id: str
+    verified_by: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Custom Module Schemas
+class CustomModuleBase(BaseModel):
+    module_key: str
+    display_name: str
+    description: Optional[str] = None
+    category: Optional[str] = None
+    is_active: bool = True
+
+
+class CustomModuleCreate(CustomModuleBase):
+    pass
+
+
+class CustomModuleUpdate(BaseModel):
+    display_name: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class CustomModuleResponse(CustomModuleBase):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Custom Permission Schemas
+class CustomPermissionBase(BaseModel):
+    module_id: str
+    permission_key: str
+    action: str
+    description: Optional[str] = None
+    is_active: bool = True
+
+
+class CustomPermissionCreate(CustomPermissionBase):
+    pass
+
+
+class CustomPermissionResponse(CustomPermissionBase):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Role Permission Schemas
+class RolePermissionBase(BaseModel):
+    role_id: int
+    permission_id: str
+    granted: bool = True
+
+
+class RolePermissionCreate(RolePermissionBase):
+    pass
+
+
+class RolePermissionResponse(RolePermissionBase):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# User Permission Override Schemas
+class UserPermissionOverrideBase(BaseModel):
+    user_id: int
+    permission_id: str
+    granted: bool
+    reason: Optional[str] = None
+    expires_at: Optional[datetime] = None
+
+
+class UserPermissionOverrideCreate(UserPermissionOverrideBase):
+    pass
+
+
+class UserPermissionOverrideResponse(UserPermissionOverrideBase):
+    id: str
+    granted_by: Optional[int] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Suspicious Activity Schemas
+class SuspiciousActivityBase(BaseModel):
+    user_id: int
+    activity_type: str
+    details: dict
+    risk_score: int
+
+
+class SuspiciousActivityCreate(SuspiciousActivityBase):
+    pass
+
+
+class SuspiciousActivityReview(BaseModel):
+    reviewed: bool = True
+    action_taken: Optional[str] = None
+
+
+class SuspiciousActivityResponse(SuspiciousActivityBase):
+    id: str
+    detected_at: datetime
+    reviewed: bool
+    reviewed_by: Optional[int] = None
+    reviewed_at: Optional[datetime] = None
+    action_taken: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Sub-User Schemas
+class SubUserCreate(BaseModel):
+    sub_user_id: int
+
+
+class SubUserResponse(BaseModel):
+    id: str
+    parent_user_id: int
+    sub_user_id: int
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
