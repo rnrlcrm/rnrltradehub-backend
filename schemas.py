@@ -1,20 +1,26 @@
 """
-Pydantic schemas for API request/response validation.
+Clean Pydantic Schemas - Matching Frontend Requirements Only
 
-These schemas match the frontend TypeScript interfaces.
+This file contains ONLY the schemas that the frontend actually uses.
+All unused schemas have been removed for clarity.
+
+Frontend Modules Supported:
+1. Settings (Organizations, Locations, CCI Terms, Commodities)
+2. Trade Desk (Trades, Offers, Tested Lots, Negotiations)
+3. Business Partners
+4. Financial Year
+5. Auth & Users
 """
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, field_validator, Field
+from pydantic import BaseModel, EmailStr, Field
 from enum import Enum
-from validators import (
-    validate_pan, validate_gstin, validate_mobile, validate_pincode, validate_ifsc,
-    sanitize_pan, sanitize_gstin, sanitize_mobile, sanitize_pincode, sanitize_ifsc,
-    ValidationError
-)
 
 
-# Enums
+# ============================================================================
+# ENUMS
+# ============================================================================
+
 class BusinessType(str, Enum):
     BUYER = "BUYER"
     SELLER = "SELLER"
@@ -22,237 +28,56 @@ class BusinessType(str, Enum):
     AGENT = "AGENT"
 
 
-class BusinessPartnerStatus(str, Enum):
+class TradeAction(str, Enum):
+    BUY = "buy"
+    SELL = "sell"
+
+
+class TradeStatus(str, Enum):
     DRAFT = "DRAFT"
-    PENDING_COMPLIANCE = "PENDING_COMPLIANCE"
+    POSTED = "POSTED"
+    OFFERS_RECEIVED = "OFFERS_RECEIVED"
+    NEGOTIATION = "NEGOTIATION"
+    AGREED = "AGREED"
+    CONTRACT_CREATED = "CONTRACT_CREATED"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+    EXPIRED = "EXPIRED"
+
+
+class OfferStatus(str, Enum):
+    PENDING = "PENDING"
+    COUNTERED = "COUNTERED"
+    ACCEPTED = "ACCEPTED"
+    REJECTED = "REJECTED"
+    EXPIRED = "EXPIRED"
+
+
+class TestedLotStatus(str, Enum):
     ACTIVE = "ACTIVE"
-    INACTIVE = "INACTIVE"
-    BLACKLISTED = "BLACKLISTED"
+    EXPIRED = "EXPIRED"
+    DEPLETED = "DEPLETED"
 
 
-class ContractStatus(str, Enum):
-    ACTIVE = "Active"
-    COMPLETED = "Completed"
-    DISPUTED = "Disputed"
-    CARRIED_FORWARD = "Carried Forward"
-    AMENDED = "Amended"
-    PENDING_APPROVAL = "Pending Approval"
-    REJECTED = "Rejected"
+class NegotiationRole(str, Enum):
+    BUYER = "buyer"
+    SELLER = "seller"
 
 
-class UserRole(str, Enum):
-    ADMIN = "Admin"
-    SALES = "Sales"
-    ACCOUNTS = "Accounts"
-    DISPUTE_MANAGER = "Dispute Manager"
-    VENDOR_CLIENT = "Vendor/Client"
+class UrgencyLevel(str, Enum):
+    NORMAL = "normal"
+    URGENT = "urgent"
 
 
-class UserType(str, Enum):
-    PRIMARY = "primary"
-    SUB_USER = "sub_user"
-
-
-# Base Schemas
-class AddressBase(BaseModel):
-    address_line1: str
-    address_line2: Optional[str] = None
-    city: str
-    state: str
-    pincode: str
-    country: str
-    is_default: bool = False
-
-
-class AddressCreate(AddressBase):
-    pass
-
-
-class AddressResponse(AddressBase):
-    id: str
-
-    class Config:
-        from_attributes = True
-
-
-class BusinessPartnerBase(BaseModel):
-    bp_code: str
-    legal_name: str
-    organization: str
-    business_type: BusinessType
-    status: BusinessPartnerStatus = BusinessPartnerStatus.DRAFT
-    kyc_due_date: Optional[datetime] = None
-    contact_person: str
-    contact_email: EmailStr
-    contact_phone: str
-    address_line1: str
-    address_line2: Optional[str] = None
-    city: str
-    state: str
-    pincode: str
-    country: str
-    pan: str
-    gstin: Optional[str] = None
-    bank_name: Optional[str] = None
-    bank_account_no: Optional[str] = None
-    bank_ifsc: Optional[str] = None
-    pan_doc_url: Optional[str] = None
-    gst_doc_url: Optional[str] = None
-    cheque_doc_url: Optional[str] = None
-    compliance_notes: Optional[str] = None
-    
-    @field_validator('pan')
-    @classmethod
-    def validate_pan_format(cls, v):
-        """Validate PAN format."""
-        try:
-            validate_pan(v)
-            return sanitize_pan(v)
-        except ValidationError as e:
-            raise ValueError(str(e))
-    
-    @field_validator('gstin')
-    @classmethod
-    def validate_gstin_format(cls, v):
-        """Validate GSTIN format."""
-        if v:
-            try:
-                validate_gstin(v)
-                return sanitize_gstin(v)
-            except ValidationError as e:
-                raise ValueError(str(e))
-        return v
-    
-    @field_validator('contact_phone')
-    @classmethod
-    def validate_mobile_format(cls, v):
-        """Validate mobile number format."""
-        try:
-            validate_mobile(v)
-            return sanitize_mobile(v)
-        except ValidationError as e:
-            raise ValueError(str(e))
-    
-    @field_validator('pincode')
-    @classmethod
-    def validate_pincode_format(cls, v):
-        """Validate pincode format."""
-        try:
-            validate_pincode(v)
-            return sanitize_pincode(v)
-        except ValidationError as e:
-            raise ValueError(str(e))
-    
-    @field_validator('bank_ifsc')
-    @classmethod
-    def validate_ifsc_format(cls, v):
-        """Validate IFSC code format."""
-        if v:
-            try:
-                validate_ifsc(v)
-                return sanitize_ifsc(v)
-            except ValidationError as e:
-                raise ValueError(str(e))
-        return v
-
-
-class BusinessPartnerCreate(BusinessPartnerBase):
-    shipping_addresses: Optional[List[AddressCreate]] = []
-
-
-class BusinessPartnerResponse(BusinessPartnerBase):
-    id: str
-    shipping_addresses: List[AddressResponse] = []
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-class CciTermBase(BaseModel):
-    name: str
-    contract_period_days: int
-    emd_payment_days: int
-    cash_discount_percentage: float
-    carrying_charge_tier1_days: int
-    carrying_charge_tier1_percent: float
-    carrying_charge_tier2_days: int
-    carrying_charge_tier2_percent: float
-    additional_deposit_percent: float
-    deposit_interest_percent: float
-    free_lifting_period_days: int
-    late_lifting_tier1_days: int
-    late_lifting_tier1_percent: float
-    late_lifting_tier2_days: int
-    late_lifting_tier2_percent: float
-    late_lifting_tier3_percent: float
-
-
-class CciTermCreate(CciTermBase):
-    pass
-
-
-class CciTermResponse(CciTermBase):
-    id: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-class SalesContractBase(BaseModel):
-    sc_no: str
-    version: int = 1
-    amendment_reason: Optional[str] = None
-    date: datetime
-    organization: str
-    financial_year: str
-    client_id: str
-    client_name: str
-    vendor_id: str
-    vendor_name: str
-    agent_id: Optional[str] = None
-    variety: str
-    quantity_bales: int
-    rate: float
-    gst_rate_id: Optional[int] = None
-    buyer_commission_id: Optional[int] = None
-    seller_commission_id: Optional[int] = None
-    buyer_commission_gst_id: Optional[int] = None
-    seller_commission_gst_id: Optional[int] = None
-    trade_type: str
-    bargain_type: str
-    weightment_terms: str
-    passing_terms: str
-    delivery_terms: str
-    payment_terms: str
-    location: str
-    quality_specs: Dict[str, str]
-    manual_terms: Optional[str] = None
-    status: ContractStatus = ContractStatus.ACTIVE
-    cci_contract_no: Optional[str] = None
-    cci_term_id: Optional[int] = None
-
-
-class SalesContractCreate(SalesContractBase):
-    pass
-
-
-class SalesContractResponse(SalesContractBase):
-    id: str
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
+# ============================================================================
+# AUTH & USER SCHEMAS
+# ============================================================================
 
 class UserBase(BaseModel):
     name: str
     email: EmailStr
-    role: UserRole
+    role_id: Optional[int] = None
+    is_active: bool = True
 
 
 class UserCreate(UserBase):
@@ -262,65 +87,13 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
-    role: Optional[UserRole] = None
-    password: Optional[str] = None
-    is_active: Optional[bool] = None
-
-
-class UserResponse(BaseModel):
-    id: int
-    name: str
-    email: EmailStr
-    role: Optional[UserRole] = Field(None, validation_alias='role_name')
-    is_active: bool
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-        populate_by_name = True
-
-
-# Enhanced User Schemas for Settings Module
-class SettingsUserCreate(BaseModel):
-    """Schema for creating a user through the settings module."""
-    name: str
-    email: EmailStr
-    password: str
-    role_id: Optional[int] = None
-    user_type: Optional[UserType] = UserType.PRIMARY
-    client_id: Optional[str] = None
-    vendor_id: Optional[str] = None
-    parent_user_id: Optional[int] = None
-    max_sub_users: Optional[int] = 5
-
-
-class SettingsUserUpdate(BaseModel):
-    """Schema for updating a user through the settings module."""
-    name: Optional[str] = None
-    email: Optional[EmailStr] = None
-    password: Optional[str] = None
     role_id: Optional[int] = None
     is_active: Optional[bool] = None
-    user_type: Optional[UserType] = None
-    client_id: Optional[str] = None
-    vendor_id: Optional[str] = None
-    max_sub_users: Optional[int] = None
+    password: Optional[str] = None
 
 
-class SettingsUserResponse(BaseModel):
-    """Schema for user response from the settings module."""
+class UserResponse(UserBase):
     id: int
-    name: str
-    email: str
-    role_id: Optional[int] = None
-    role_name: Optional[str] = None
-    is_active: bool
-    user_type: str
-    client_id: Optional[str] = None
-    vendor_id: Optional[str] = None
-    parent_user_id: Optional[int] = None
-    max_sub_users: Optional[int] = None
     created_at: datetime
     updated_at: datetime
 
@@ -328,94 +101,18 @@ class SettingsUserResponse(BaseModel):
         from_attributes = True
 
 
-class HealthCheckResponse(BaseModel):
-    status: str
-    service: str
-    version: str
-    database: Optional[str] = None
-
-
-# Invoice Schemas
-class InvoiceBase(BaseModel):
-    invoice_no: str
-    organization_id: int
-    financial_year: str
-    sales_contract_id: str
-    date: datetime
-    amount: float
-    status: Optional[str] = 'Unpaid'
-
-
-class InvoiceCreate(InvoiceBase):
-    pass
-
-
-class InvoiceResponse(InvoiceBase):
-    id: str
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# Payment Schemas
-class PaymentBase(BaseModel):
-    payment_id: str
-    organization_id: int
-    financial_year: str
-    invoice_id: str
-    date: datetime
-    amount: float
-    method: str
-
-
-class PaymentCreate(PaymentBase):
-    pass
-
-
-class PaymentResponse(PaymentBase):
-    id: str
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# Commission Schemas
-class CommissionBase(BaseModel):
-    commission_id: str
-    organization_id: int
-    financial_year: str
-    sales_contract_id: str
-    agent: str
-    amount: float
-    status: Optional[str] = 'Due'
-
-
-class CommissionCreate(CommissionBase):
-    pass
-
-
-class CommissionResponse(CommissionBase):
-    id: str
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# Role Schemas
 class RoleBase(BaseModel):
     name: str
     description: Optional[str] = None
-    is_active: Optional[bool] = True
 
 
 class RoleCreate(RoleBase):
     pass
+
+
+class RoleUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
 
 
 class RoleResponse(RoleBase):
@@ -427,420 +124,18 @@ class RoleResponse(RoleBase):
         from_attributes = True
 
 
-# Data Retention Policy Schemas  
-class RetentionPolicyBase(BaseModel):
-    entity_type: str
-    retention_days: int
-    archive_after_days: Optional[int] = None
-    delete_after_days: Optional[int] = None
-    policy_type: str
-    description: Optional[str] = None
-    is_active: Optional[bool] = True
-
-
-class RetentionPolicyCreate(RetentionPolicyBase):
-    pass
-
-
-class RetentionPolicyResponse(RetentionPolicyBase):
-    id: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# Data Access Log Schemas
-class DataAccessLogBase(BaseModel):
-    user_id: int
-    entity_type: str
-    entity_id: str
-    action: str
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
-    purpose: Optional[str] = None
-    metadata_json: Optional[dict] = None
-
-
-class DataAccessLogCreate(DataAccessLogBase):
-    pass
-
-
-class DataAccessLogResponse(DataAccessLogBase):
-    id: int
-    accessed_at: datetime
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# Consent Record Schemas
-class ConsentRecordBase(BaseModel):
-    user_id: Optional[int] = None
-    business_partner_id: Optional[str] = None
-    consent_type: str
-    consent_given: bool
-    consent_date: datetime
-    withdrawn_date: Optional[datetime] = None
-    ip_address: Optional[str] = None
-    metadata_json: Optional[dict] = None
-
-
-class ConsentRecordCreate(ConsentRecordBase):
-    pass
-
-
-class ConsentRecordResponse(ConsentRecordBase):
-    id: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# Data Export Request Schemas
-class DataExportRequestBase(BaseModel):
-    user_id: Optional[int] = None
-    business_partner_id: Optional[str] = None
-    request_type: str
-    status: Optional[str] = 'pending'
-
-
-class DataExportRequestCreate(DataExportRequestBase):
-    pass
-
-
-class DataExportRequestResponse(DataExportRequestBase):
-    id: str
-    requested_at: datetime
-    completed_at: Optional[datetime] = None
-    export_file_path: Optional[str] = None
-    metadata_json: Optional[dict] = None
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# Security Event Schemas
-class SecurityEventBase(BaseModel):
-    event_type: str
-    severity: str
-    user_id: Optional[int] = None
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
-    description: str
-
-
-class SecurityEventCreate(SecurityEventBase):
-    pass
-
-
-class SecurityEventResponse(SecurityEventBase):
-    id: int
-    event_time: datetime
-    resolved: bool
-    resolved_at: Optional[datetime] = None
-    metadata_json: Optional[dict] = None
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# Authentication Schemas
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
-
-
-class LoginResponse(BaseModel):
-    access_token: str
-    token_type: str
-    user: dict
-
-
-# Team Management Schemas
-class SubUserCreate(BaseModel):
-    name: str
-    email: EmailStr
-    password: str
-    role_id: Optional[int] = None
-
-
-class SubUserUpdate(BaseModel):
-    name: Optional[str] = None
-    email: Optional[EmailStr] = None
-    password: Optional[str] = None
-    role_id: Optional[int] = None
-    is_active: Optional[bool] = None
-
-
-class SubUserResponse(BaseModel):
-    id: int
-    name: str
-    email: str
-    role_id: Optional[int] = None
-    is_active: bool
-    user_type: str
-    parent_user_id: Optional[int] = None
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-class UserAuditLogResponse(BaseModel):
-    id: int
-    user_id: int
-    action: str
-    entity_type: Optional[str] = None
-    entity_id: Optional[str] = None
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
-    details: Optional[dict] = None
-    timestamp: datetime
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# ========== NEW SCHEMAS FOR ENHANCED ACCESS CONTROL (PHASE 2) ==========
-
-# Business Branch Schemas
-class BusinessBranchBase(BaseModel):
-    branch_code: str
-    branch_name: str
-    state: str
-    gst_number: str
-    address: dict
-    contact_person: Optional[dict] = None
-    bank_details: Optional[dict] = None
-    is_head_office: bool = False
-    is_active: bool = True
-
-
-class BusinessBranchCreate(BusinessBranchBase):
-    partner_id: str
-
-
-class BusinessBranchUpdate(BaseModel):
-    branch_name: Optional[str] = None
-    state: Optional[str] = None
-    gst_number: Optional[str] = None
-    address: Optional[dict] = None
-    contact_person: Optional[dict] = None
-    bank_details: Optional[dict] = None
-    is_head_office: Optional[bool] = None
-    is_active: Optional[bool] = None
-
-
-class BusinessBranchResponse(BusinessBranchBase):
-    id: str
-    partner_id: str
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# Amendment Request Schemas
-class AmendmentRequestBase(BaseModel):
-    entity_type: str
-    entity_id: str
-    request_type: str
-    reason: str
-    justification: Optional[str] = None
-    changes: dict
-
-
-class AmendmentRequestCreate(AmendmentRequestBase):
-    pass
-
-
-class AmendmentRequestReview(BaseModel):
-    status: str  # APPROVED or REJECTED
-    review_notes: Optional[str] = None
-
-
-class AmendmentRequestResponse(AmendmentRequestBase):
-    id: str
-    requested_by: int
-    requested_at: datetime
-    status: str
-    reviewed_by: Optional[int] = None
-    reviewed_at: Optional[datetime] = None
-    review_notes: Optional[str] = None
-    impact_assessment: Optional[dict] = None
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# Onboarding Application Schemas
-class OnboardingApplicationBase(BaseModel):
-    company_info: dict
-    contact_info: dict
-    compliance_info: dict
-    branch_info: Optional[dict] = None
-    documents: Optional[dict] = None
-
-
-class OnboardingApplicationCreate(OnboardingApplicationBase):
-    pass
-
-
-class OnboardingApplicationReview(BaseModel):
-    status: str  # APPROVED or REJECTED
-    review_notes: Optional[str] = None
-
-
-class OnboardingApplicationResponse(OnboardingApplicationBase):
-    id: str
-    application_number: str
-    status: str
-    review_notes: Optional[str] = None
-    reviewed_by: Optional[int] = None
-    reviewed_at: Optional[datetime] = None
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# Profile Update Request Schemas
-class ProfileUpdateRequestBase(BaseModel):
-    update_type: str
-    old_values: dict
-    new_values: dict
-    reason: Optional[str] = None
-
-
-class ProfileUpdateRequestCreate(ProfileUpdateRequestBase):
-    partner_id: Optional[str] = None
-
-
-class ProfileUpdateRequestReview(BaseModel):
-    status: str  # APPROVED or REJECTED
-    review_notes: Optional[str] = None
-
-
-class ProfileUpdateRequestResponse(ProfileUpdateRequestBase):
-    id: str
-    user_id: int
-    partner_id: Optional[str] = None
-    status: str
-    reviewed_by: Optional[int] = None
-    reviewed_at: Optional[datetime] = None
-    review_notes: Optional[str] = None
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# KYC Verification Schemas
-class KYCVerificationBase(BaseModel):
-    partner_id: str
-    verification_date: datetime
-    documents_checked: dict
-    status: str
-    next_due_date: datetime
-    notes: Optional[str] = None
-
-
-class KYCVerificationCreate(KYCVerificationBase):
-    pass
-
-
-class KYCVerificationResponse(KYCVerificationBase):
-    id: str
-    verified_by: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# Custom Module Schemas
-class CustomModuleBase(BaseModel):
-    module_key: str
-    display_name: str
-    description: Optional[str] = None
-    category: Optional[str] = None
-    is_active: bool = True
-
-
-class CustomModuleCreate(CustomModuleBase):
-    pass
-
-
-class CustomModuleUpdate(BaseModel):
-    display_name: Optional[str] = None
-    description: Optional[str] = None
-    category: Optional[str] = None
-    is_active: Optional[bool] = None
-
-
-class CustomModuleResponse(CustomModuleBase):
-    id: str
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# Custom Permission Schemas
-class CustomPermissionBase(BaseModel):
-    module_id: str
-    permission_key: str
-    action: str
-    description: Optional[str] = None
-    is_active: bool = True
-
-
-class CustomPermissionCreate(CustomPermissionBase):
-    pass
-
-
-class CustomPermissionResponse(CustomPermissionBase):
-    id: str
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# Role Permission Schemas
-class RolePermissionBase(BaseModel):
+class PermissionBase(BaseModel):
     role_id: int
-    permission_id: str
-    granted: bool = True
+    module: str
+    action: str
 
 
-class RolePermissionCreate(RolePermissionBase):
+class PermissionCreate(PermissionBase):
     pass
 
 
-class RolePermissionResponse(RolePermissionBase):
-    id: str
+class PermissionResponse(PermissionBase):
+    id: int
     created_at: datetime
     updated_at: datetime
 
@@ -848,88 +143,32 @@ class RolePermissionResponse(RolePermissionBase):
         from_attributes = True
 
 
-# User Permission Override Schemas
-class UserPermissionOverrideBase(BaseModel):
-    user_id: int
-    permission_id: str
-    granted: bool
-    reason: Optional[str] = None
-    expires_at: Optional[datetime] = None
-
-
-class UserPermissionOverrideCreate(UserPermissionOverrideBase):
-    pass
-
-
-class UserPermissionOverrideResponse(UserPermissionOverrideBase):
-    id: str
-    granted_by: Optional[int] = None
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# Suspicious Activity Schemas
-class SuspiciousActivityBase(BaseModel):
-    user_id: int
-    activity_type: str
-    details: dict
-    risk_score: int
-
-
-class SuspiciousActivityCreate(SuspiciousActivityBase):
-    pass
-
-
-class SuspiciousActivityReview(BaseModel):
-    reviewed: bool = True
-    action_taken: Optional[str] = None
-
-
-class SuspiciousActivityResponse(SuspiciousActivityBase):
-    id: str
-    detected_at: datetime
-    reviewed: bool
-    reviewed_by: Optional[int] = None
-    reviewed_at: Optional[datetime] = None
-    action_taken: Optional[str] = None
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# Sub-User Schemas
-class SubUserCreate(BaseModel):
-    sub_user_id: int
-
-
-class SubUserResponse(BaseModel):
-    id: str
-    parent_user_id: int
-    sub_user_id: int
-    is_active: bool
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# ========== MASTER DATA SCHEMAS ==========
+# ============================================================================
+# SETTINGS MODULE SCHEMAS
+# ============================================================================
 
 # Organization Schemas
 class OrganizationBase(BaseModel):
-    legal_name: str
-    display_name: str
-    pan: str
+    name: str
+    code: str
+    organization_type: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    pincode: Optional[str] = None
+    country: str = "India"
+    phone: Optional[str] = None
+    email: Optional[str] = None
     gstin: Optional[str] = None
-    address: Optional[dict] = None
+    pan: Optional[str] = None
+    tan: Optional[str] = None
+    cin: Optional[str] = None
+    bank_name: Optional[str] = None
+    account_number: Optional[str] = None
+    ifsc_code: Optional[str] = None
+    branch: Optional[str] = None
+    website: Optional[str] = None
     logo_url: Optional[str] = None
-    settings: Optional[dict] = None
     is_active: bool = True
 
 
@@ -938,13 +177,26 @@ class OrganizationCreate(OrganizationBase):
 
 
 class OrganizationUpdate(BaseModel):
-    legal_name: Optional[str] = None
-    display_name: Optional[str] = None
-    pan: Optional[str] = None
+    name: Optional[str] = None
+    code: Optional[str] = None
+    organization_type: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    pincode: Optional[str] = None
+    country: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
     gstin: Optional[str] = None
-    address: Optional[dict] = None
+    pan: Optional[str] = None
+    tan: Optional[str] = None
+    cin: Optional[str] = None
+    bank_name: Optional[str] = None
+    account_number: Optional[str] = None
+    ifsc_code: Optional[str] = None
+    branch: Optional[str] = None
+    website: Optional[str] = None
     logo_url: Optional[str] = None
-    settings: Optional[dict] = None
     is_active: Optional[bool] = None
 
 
@@ -957,16 +209,228 @@ class OrganizationResponse(OrganizationBase):
         from_attributes = True
 
 
-# Financial Year Schemas
+# Location Schemas
+class LocationBase(BaseModel):
+    country: str
+    state: str
+    region: Optional[str] = None
+    city: str
+
+
+class LocationCreate(LocationBase):
+    pass
+
+
+class LocationUpdate(BaseModel):
+    country: Optional[str] = None
+    state: Optional[str] = None
+    region: Optional[str] = None
+    city: Optional[str] = None
+
+
+class LocationResponse(LocationBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# CCI Term Schemas
+class CciTermBase(BaseModel):
+    name: str
+    effective_from: datetime
+    effective_to: Optional[datetime] = None
+    version: int = 1
+    is_active: bool = True
+    candy_factor: float
+    gst_rate: float
+    emd_by_buyer_type: Dict[str, float]
+    emd_payment_days: Optional[int] = None
+    emd_interest_percent: Optional[float] = None
+    emd_late_interest_percent: Optional[float] = None
+    emd_block_do_if_not_full: bool = True
+    carrying_charge_tier1_days: Optional[int] = None
+    carrying_charge_tier1_percent: Optional[float] = None
+    carrying_charge_tier2_days: Optional[int] = None
+    carrying_charge_tier2_percent: Optional[float] = None
+    free_lifting_period_days: Optional[int] = None
+    late_lifting_tier1_days: Optional[int] = None
+    late_lifting_tier1_percent: Optional[float] = None
+    late_lifting_tier2_days: Optional[int] = None
+    late_lifting_tier2_percent: Optional[float] = None
+    late_lifting_tier3_percent: Optional[float] = None
+    cash_discount_percentage: Optional[float] = None
+    interest_lc_bg_percent: Optional[float] = None
+    penal_interest_lc_bg_percent: Optional[float] = None
+    additional_deposit_percent: Optional[float] = None
+    deposit_interest_percent: Optional[float] = None
+    lifting_period_days: Optional[int] = None
+    contract_period_days: Optional[int] = None
+    lockin_charge_min: Optional[float] = None
+    lockin_charge_max: Optional[float] = None
+    moisture_lower_limit: Optional[float] = None
+    moisture_upper_limit: Optional[float] = None
+    moisture_sample_count: Optional[int] = None
+    email_reminder_days: Optional[int] = None
+    email_template_emd_reminder: Optional[str] = None
+    email_template_payment_due: Optional[str] = None
+
+
+class CciTermCreate(CciTermBase):
+    pass
+
+
+class CciTermUpdate(BaseModel):
+    name: Optional[str] = None
+    effective_from: Optional[datetime] = None
+    effective_to: Optional[datetime] = None
+    version: Optional[int] = None
+    is_active: Optional[bool] = None
+    # ... (all other fields optional for updates)
+
+
+class CciTermResponse(CciTermBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Commodity Schemas
+class CommodityBase(BaseModel):
+    name: str
+    symbol: str
+    unit: str
+    rate_unit: Optional[str] = None
+    hsn_code: Optional[str] = None
+    gst_rate: Optional[float] = None
+    gst_exemption_available: bool = False
+    gst_category: Optional[str] = None
+    is_processed: bool = False
+    trade_types: Optional[List[Dict]] = None
+    bargain_types: Optional[List[Dict]] = None
+    varieties: Optional[List[Dict]] = None
+    weightment_terms: Optional[List[Dict]] = None
+    passing_terms: Optional[List[Dict]] = None
+    delivery_terms: Optional[List[Dict]] = None
+    payment_terms: Optional[List[Dict]] = None
+    commissions: Optional[List[Dict]] = None
+    quality_parameters: Optional[List[Dict]] = None
+    certificates: Optional[List[str]] = None
+    supports_cci_terms: bool = False
+    description: Optional[str] = None
+    is_active: bool = True
+
+
+class CommodityCreate(CommodityBase):
+    pass
+
+
+class CommodityUpdate(BaseModel):
+    name: Optional[str] = None
+    symbol: Optional[str] = None
+    unit: Optional[str] = None
+    # ... (all fields optional)
+    is_active: Optional[bool] = None
+
+
+class CommodityResponse(CommodityBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ============================================================================
+# BUSINESS PARTNER SCHEMAS
+# ============================================================================
+
+class AddressBase(BaseModel):
+    address_line1: str
+    address_line2: Optional[str] = None
+    city: str
+    state: str
+    pincode: str
+    country: str = "India"
+    is_default: bool = False
+
+
+class AddressCreate(AddressBase):
+    pass
+
+
+class AddressResponse(AddressBase):
+    id: str
+    business_partner_id: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class BusinessPartnerBase(BaseModel):
+    bp_code: str
+    legal_name: str
+    business_type: BusinessType
+    status: str = "ACTIVE"
+    contact_person: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    address_line1: Optional[str] = None
+    address_line2: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    pincode: Optional[str] = None
+    country: str = "India"
+    pan: Optional[str] = None
+    gstin: Optional[str] = None
+    bank_name: Optional[str] = None
+    bank_account_no: Optional[str] = None
+    bank_ifsc: Optional[str] = None
+
+
+class BusinessPartnerCreate(BusinessPartnerBase):
+    shipping_addresses: List[AddressCreate] = []
+
+
+class BusinessPartnerUpdate(BaseModel):
+    bp_code: Optional[str] = None
+    legal_name: Optional[str] = None
+    business_type: Optional[BusinessType] = None
+    status: Optional[str] = None
+    # ... (all fields optional)
+
+
+class BusinessPartnerResponse(BusinessPartnerBase):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+    addresses: List[AddressResponse] = []
+
+    class Config:
+        from_attributes = True
+
+
+# ============================================================================
+# FINANCIAL YEAR SCHEMAS
+# ============================================================================
+
 class FinancialYearBase(BaseModel):
     organization_id: int
-    year_code: str  # e.g., "2023-24"
+    year_code: str
     start_date: datetime
     end_date: datetime
-    assessment_year: str  # e.g., "2024-25"
+    assessment_year: str
     is_active: bool = False
     is_closed: bool = False
-    opening_balances: Optional[dict] = None
+    opening_balances: Optional[Dict] = None
 
 
 class FinancialYearCreate(FinancialYearBase):
@@ -980,7 +444,7 @@ class FinancialYearUpdate(BaseModel):
     assessment_year: Optional[str] = None
     is_active: Optional[bool] = None
     is_closed: Optional[bool] = None
-    opening_balances: Optional[dict] = None
+    opening_balances: Optional[Dict] = None
 
 
 class FinancialYearResponse(FinancialYearBase):
@@ -992,40 +456,165 @@ class FinancialYearResponse(FinancialYearBase):
         from_attributes = True
 
 
-# Commodity Master Schemas
-class CommodityBase(BaseModel):
-    commodity_code: str
-    commodity_name: str
-    commodity_type: str  # e.g., 'Cotton', 'Wheat', 'Rice'
-    variety: Optional[str] = None
-    grade: Optional[str] = None
-    hsn_code: Optional[str] = None
-    uom: str = 'BALES'  # Unit of measurement
-    description: Optional[str] = None
-    quality_parameters: Optional[dict] = None  # length, mic, rd, etc.
-    is_active: bool = True
-    metadata_json: Optional[dict] = None
+# ============================================================================
+# TRADE DESK SCHEMAS
+# ============================================================================
+
+# Trade Schemas
+class TradeBase(BaseModel):
+    action: TradeAction
+    buyer_id: str
+    commodity_id: int
+    quantity: float
+    unit: str
+    variety_id: Optional[int] = None
+    parameters: Dict[str, Dict[str, float]]  # {"staple_mm": {"min": 28, "max": 30}}
+    trade_type_id: Optional[int] = None
+    bargain_type_id: Optional[int] = None
+    passing_id: Optional[int] = None
+    weightment_id: Optional[int] = None
+    delivery_term_id: Optional[int] = None
+    delivery_days: Optional[int] = None
+    payment_term_id: Optional[int] = None
+    payment_days: Optional[int] = None
+    location_state_id: Optional[int] = None
+    location_region_id: Optional[int] = None
+    location_station_id: Optional[int] = None
+    certificates: Optional[List[str]] = None
+    target_price: Optional[float] = None
+    currency: str = "INR"
+    price_unit: Optional[str] = None
+    notes: Optional[str] = None
+    urgency: UrgencyLevel = UrgencyLevel.NORMAL
 
 
-class CommodityCreate(CommodityBase):
+class TradeCreate(TradeBase):
     pass
 
 
-class CommodityUpdate(BaseModel):
-    commodity_code: Optional[str] = None
-    commodity_name: Optional[str] = None
-    commodity_type: Optional[str] = None
-    variety: Optional[str] = None
-    grade: Optional[str] = None
-    hsn_code: Optional[str] = None
-    uom: Optional[str] = None
-    description: Optional[str] = None
-    quality_parameters: Optional[dict] = None
-    is_active: Optional[bool] = None
-    metadata_json: Optional[dict] = None
+class TradeUpdate(BaseModel):
+    status: Optional[TradeStatus] = None
+    expires_at: Optional[datetime] = None
+    assigned_to_user_id: Optional[int] = None
+    # ... other updatable fields
 
 
-class CommodityResponse(CommodityBase):
+class TradeResponse(TradeBase):
+    id: int
+    status: TradeStatus
+    expires_at: Optional[datetime]
+    assigned_to_user_id: Optional[int]
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Offer Schemas
+class OfferBase(BaseModel):
+    trade_id: int
+    seller_id: str
+    station_id: int
+    price: float
+    currency: str = "INR"
+    price_unit: str
+    quantity: float
+    unit: str
+    variety_id: Optional[int] = None
+    parameters: Dict[str, float]  # {"staple_mm": 29.0, "mic": 4.1}
+    test_report_url: Optional[str] = None
+    test_report_date: Optional[datetime] = None
+    tested_lot_id: Optional[int] = None
+    delivery_term_id: Optional[int] = None
+    payment_term_id: Optional[int] = None
+    valid_until: datetime
+    validity_hours: Optional[int] = None
+    notes: Optional[str] = None
+
+
+class OfferCreate(OfferBase):
+    pass
+
+
+class OfferUpdate(BaseModel):
+    status: Optional[OfferStatus] = None
+    match_score: Optional[float] = None
+    match_breakdown: Optional[Dict] = None
+    parameter_deviations: Optional[List] = None
+
+
+class OfferResponse(OfferBase):
+    id: int
+    status: OfferStatus
+    match_score: Optional[float]
+    match_breakdown: Optional[Dict]
+    parameter_deviations: Optional[List]
+    negotiation_version: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Tested Lot Schemas
+class TestedLotBase(BaseModel):
+    seller_id: str
+    commodity_id: int
+    station_id: int
+    quantity: float
+    quantity_available: float
+    unit: str
+    variety_id: Optional[int] = None
+    parameters: Dict[str, float]
+    test_report_url: str
+    test_report_date: datetime
+    testing_lab: Optional[str] = None
+    valid_until: datetime
+    notes: Optional[str] = None
+
+
+class TestedLotCreate(TestedLotBase):
+    pass
+
+
+class TestedLotUpdate(BaseModel):
+    quantity_available: Optional[float] = None
+    quantity_offered: Optional[float] = None
+    status: Optional[TestedLotStatus] = None
+    matched_trade_ids: Optional[List[int]] = None
+
+
+class TestedLotResponse(TestedLotBase):
+    id: int
+    quantity_offered: float
+    status: TestedLotStatus
+    matched_trade_ids: Optional[List[int]]
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Negotiation Schemas
+class NegotiationBase(BaseModel):
+    offer_id: int
+    version: int
+    sender_id: int
+    sender_role: NegotiationRole
+    new_price: Optional[float] = None
+    new_quantity: Optional[float] = None
+    new_valid_until: Optional[datetime] = None
+    message: str
+
+
+class NegotiationCreate(NegotiationBase):
+    pass
+
+
+class NegotiationResponse(NegotiationBase):
     id: int
     created_at: datetime
     updated_at: datetime
@@ -1034,142 +623,29 @@ class CommodityResponse(CommodityBase):
         from_attributes = True
 
 
-# Location Master Schemas
-class LocationBase(BaseModel):
-    country: str
-    state: str
-    city: str
+# ============================================================================
+# HEALTH CHECK & UTILITY SCHEMAS
+# ============================================================================
+
+class HealthCheckResponse(BaseModel):
+    status: str
+    service: str
+    version: str
+    database: str
 
 
-class LocationCreate(LocationBase):
-    pass
+# ============================================================================
+# SETTINGS USER MANAGEMENT (from routes_complete.py)
+# ============================================================================
 
-
-class LocationUpdate(BaseModel):
-    country: Optional[str] = None
-    state: Optional[str] = None
-    city: Optional[str] = None
-
-
-class LocationResponse(LocationBase):
+class SettingsUserResponse(BaseModel):
+    """User response for settings module."""
     id: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# GST Rate Schemas
-class GstRateBase(BaseModel):
-    rate: float
-    description: str
-    hsn_code: str
-
-
-class GstRateCreate(GstRateBase):
-    pass
-
-
-class GstRateUpdate(BaseModel):
-    rate: Optional[float] = None
-    description: Optional[str] = None
-    hsn_code: Optional[str] = None
-
-
-class GstRateResponse(GstRateBase):
-    id: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# Commission Structure Schemas
-class CommissionStructureBase(BaseModel):
     name: str
-    type: str  # 'PERCENTAGE' or 'PER_BALE'
-    value: float
-
-
-class CommissionStructureCreate(CommissionStructureBase):
-    pass
-
-
-class CommissionStructureUpdate(BaseModel):
-    name: Optional[str] = None
-    type: Optional[str] = None
-    value: Optional[float] = None
-
-
-class CommissionStructureResponse(CommissionStructureBase):
-    id: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# Setting Schemas
-class SettingBase(BaseModel):
-    category: str
-    key: str
-    value: str
-    value_type: str = 'string'  # string, number, boolean, json
-    description: Optional[str] = None
-    is_public: bool = False
-    is_editable: bool = True
-
-
-class SettingCreate(SettingBase):
-    pass
-
-
-class SettingUpdate(BaseModel):
-    category: Optional[str] = None
-    value: Optional[str] = None
-    value_type: Optional[str] = None
-    description: Optional[str] = None
-    is_public: Optional[bool] = None
-    is_editable: Optional[bool] = None
-
-
-class SettingResponse(SettingBase):
-    id: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# Generic Master Data Schemas
-class MasterDataBase(BaseModel):
-    category: str
-    name: str
-    code: Optional[str] = None
-    description: Optional[str] = None
-    is_active: bool = True
-    metadata_json: Optional[dict] = None
-
-
-class MasterDataCreate(MasterDataBase):
-    pass
-
-
-class MasterDataUpdate(BaseModel):
-    category: Optional[str] = None
-    name: Optional[str] = None
-    code: Optional[str] = None
-    description: Optional[str] = None
-    is_active: Optional[bool] = None
-    metadata_json: Optional[dict] = None
-
-
-class MasterDataResponse(MasterDataBase):
-    id: int
+    email: str
+    role_id: Optional[int]
+    role_name: Optional[str]
+    is_active: bool
     created_at: datetime
     updated_at: datetime
 

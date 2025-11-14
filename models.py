@@ -1,20 +1,13 @@
 """
-Clean Backend Database Models - Matching Frontend Requirements Only
+SQLAlchemy database models matching frontend TypeScript schema.
 
-This file contains ONLY the database models that the frontend actually uses.
-All unused tables have been removed for clarity and simplicity.
-
-Frontend Modules Supported:
-1. Settings (Organizations, Locations, CCI Terms, Commodities)
-2. Trade Desk (Trades, Offers, Tested Lots, Negotiations) 
-3. Business Partners
-4. Financial Year
-5. Auth & Users
+This module contains all database table definitions based on the frontend types.
+All models inherit common timestamp fields for audit tracking.
 """
 from datetime import datetime
 from sqlalchemy import (
     Column, Integer, String, Float, DateTime, Boolean,
-    Text, Enum, ForeignKey, JSON, Numeric
+    Text, Enum, ForeignKey, JSON
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declared_attr
@@ -33,12 +26,65 @@ class TimestampMixin:
         return Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
 
-# ============================================================================
-# AUTH & USER MANAGEMENT
-# ============================================================================
+class CciTerm(Base, TimestampMixin):
+    """CCI Terms configuration table."""
+
+    __tablename__ = "cci_terms"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    contract_period_days = Column(Integer, nullable=False)
+    emd_payment_days = Column(Integer, nullable=False)
+    cash_discount_percentage = Column(Float, nullable=False)
+    carrying_charge_tier1_days = Column(Integer, nullable=False)
+    carrying_charge_tier1_percent = Column(Float, nullable=False)
+    carrying_charge_tier2_days = Column(Integer, nullable=False)
+    carrying_charge_tier2_percent = Column(Float, nullable=False)
+    additional_deposit_percent = Column(Float, nullable=False)
+    deposit_interest_percent = Column(Float, nullable=False)
+    free_lifting_period_days = Column(Integer, nullable=False)
+    late_lifting_tier1_days = Column(Integer, nullable=False)
+    late_lifting_tier1_percent = Column(Float, nullable=False)
+    late_lifting_tier2_days = Column(Integer, nullable=False)
+    late_lifting_tier2_percent = Column(Float, nullable=False)
+    late_lifting_tier3_percent = Column(Float, nullable=False)
+
+
+class CommissionStructure(Base, TimestampMixin):
+    """Commission structure configuration table."""
+
+    __tablename__ = "commission_structures"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    type = Column(Enum('PERCENTAGE', 'PER_BALE', name='commission_type'), nullable=False)
+    value = Column(Float, nullable=False)
+
+
+class GstRate(Base, TimestampMixin):
+    """GST rates configuration table."""
+
+    __tablename__ = "gst_rates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    rate = Column(Float, nullable=False)
+    description = Column(String(255), nullable=False)
+    hsn_code = Column(String(50), nullable=False)
+
+
+class Location(Base, TimestampMixin):
+    """Location master data table."""
+
+    __tablename__ = "locations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    country = Column(String(100), nullable=False)
+    state = Column(String(100), nullable=False)
+    city = Column(String(100), nullable=False)
+
 
 class User(Base, TimestampMixin):
-    """User authentication and profile."""
+    """User table for authentication and role management."""
 
     __tablename__ = "users"
 
@@ -46,274 +92,582 @@ class User(Base, TimestampMixin):
     name = Column(String(255), nullable=False)
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
-    role_id = Column(Integer, ForeignKey('roles.id'), nullable=True)
+    role_id = Column(Integer, ForeignKey('roles.id'), nullable=True)  # Foreign key to roles table
+    role_name = Column(
+        Enum('Admin', 'Sales', 'Accounts', 'Dispute Manager', 'Vendor/Client', name='user_role'),
+        nullable=True
+    )  # Kept for backward compatibility
     is_active = Column(Boolean, default=True)
     
+    # Multi-tenant support
+    client_id = Column(String(36), ForeignKey('business_partners.id'), nullable=True, index=True)
+    vendor_id = Column(String(36), ForeignKey('business_partners.id'), nullable=True, index=True)
+    parent_user_id = Column(Integer, ForeignKey('users.id'), nullable=True, index=True)
+    user_type = Column(
+        Enum('primary', 'sub_user', name='user_type'),
+        nullable=False,
+        default='primary'
+    )
+    max_sub_users = Column(Integer, default=5)  # Limit for sub-users
+
+    # Enhanced user management columns (Phase 1.1)
+    business_partner_id = Column(String(36), ForeignKey('business_partners.id'), nullable=True, index=True)
+    user_type_new = Column(String(50), default='back_office')  # back_office, business_partner
+    is_first_login = Column(Boolean, default=True)
+    password_expiry_date = Column(DateTime, nullable=True)
+    failed_login_attempts = Column(Integer, default=0)
+    locked_until = Column(DateTime, nullable=True)
+    last_activity_at = Column(DateTime, nullable=True)
+
     # Relationships
     role = relationship("Role", back_populates="users")
+    parent_user = relationship("User", remote_side=[id], backref="sub_users")
+    client = relationship("BusinessPartner", foreign_keys=[client_id])
+    vendor = relationship("BusinessPartner", foreign_keys=[vendor_id])
+    business_partner = relationship("BusinessPartner", foreign_keys=[business_partner_id])
+
+
+class Address(Base, TimestampMixin):
+    """Address table for business partners."""
+
+    __tablename__ = "addresses"
+
+    id = Column(String(36), primary_key=True)
+    business_partner_id = Column(String(36), ForeignKey('business_partners.id'), nullable=False)
+    address_line1 = Column(String(255), nullable=False)
+    address_line2 = Column(String(255))
+    city = Column(String(100), nullable=False)
+    state = Column(String(100), nullable=False)
+    pincode = Column(String(20), nullable=False)
+    country = Column(String(100), nullable=False)
+    is_default = Column(Boolean, default=False)
+
+    business_partner = relationship("BusinessPartner", back_populates="shipping_addresses")
+
+
+class BusinessPartner(Base, TimestampMixin):
+    """Business Partner (Vendor/Client/Agent) table."""
+
+    __tablename__ = "business_partners"
+
+    id = Column(String(36), primary_key=True)
+    bp_code = Column(String(50), unique=True, nullable=False, index=True)
+    legal_name = Column(String(255), nullable=False)
+    organization = Column(String(255), nullable=False)
+    business_type = Column(
+        Enum('BUYER', 'SELLER', 'BOTH', 'AGENT', name='business_type'),
+        nullable=False
+    )
+    status = Column(
+        Enum('DRAFT', 'PENDING_COMPLIANCE', 'ACTIVE', 'INACTIVE', 'BLACKLISTED', name='bp_status'),
+        nullable=False,
+        default='DRAFT'
+    )
+    kyc_due_date = Column(DateTime)
+
+    # Contact Information
+    contact_person = Column(String(255), nullable=False)
+    contact_email = Column(String(255), nullable=False)
+    contact_phone = Column(String(50), nullable=False)
+
+    # Registered Address
+    address_line1 = Column(String(255), nullable=False)
+    address_line2 = Column(String(255))
+    city = Column(String(100), nullable=False)
+    state = Column(String(100), nullable=False)
+    pincode = Column(String(20), nullable=False)
+    country = Column(String(100), nullable=False)
+
+    # Compliance Information
+    pan = Column(String(50), nullable=False)
+    gstin = Column(String(50))
+    bank_name = Column(String(255))
+    bank_account_no = Column(String(50))
+    bank_ifsc = Column(String(50))
+
+    # Document URLs
+    pan_doc_url = Column(String(500))
+    gst_doc_url = Column(String(500))
+    cheque_doc_url = Column(String(500))
+
+    # Internal Notes
+    compliance_notes = Column(Text)
+
+
+    # Relationships
+    shipping_addresses = relationship("Address", back_populates="business_partner", cascade="all, delete-orphan")
+
+
+class SalesContract(Base, TimestampMixin):
+    """Sales Contract table."""
+
+    __tablename__ = "sales_contracts"
+
+    id = Column(String(36), primary_key=True)
+    sc_no = Column(String(50), unique=True, nullable=False, index=True)
+    version = Column(Integer, nullable=False, default=1)
+    amendment_reason = Column(Text)
+    date = Column(DateTime, nullable=False)
+    organization = Column(String(255), nullable=False)
+    financial_year = Column(String(20), nullable=False)
+
+    # Parties
+    client_id = Column(String(36), ForeignKey('business_partners.id'), nullable=False)
+    client_name = Column(String(255), nullable=False)
+    vendor_id = Column(String(36), ForeignKey('business_partners.id'), nullable=False)
+    vendor_name = Column(String(255), nullable=False)
+    agent_id = Column(String(36), ForeignKey('business_partners.id'))
+
+    # Product Details
+    variety = Column(String(255), nullable=False)
+    quantity_bales = Column(Integer, nullable=False)
+    rate = Column(Float, nullable=False)
+
+    # GST and Commission
+    gst_rate_id = Column(Integer, ForeignKey('gst_rates.id'))
+    buyer_commission_id = Column(Integer, ForeignKey('commission_structures.id'))
+    seller_commission_id = Column(Integer, ForeignKey('commission_structures.id'))
+    buyer_commission_gst_id = Column(Integer, ForeignKey('gst_rates.id'))
+    seller_commission_gst_id = Column(Integer, ForeignKey('gst_rates.id'))
+
+    # Terms
+    trade_type = Column(String(100), nullable=False)
+    bargain_type = Column(String(100), nullable=False)
+    weightment_terms = Column(String(255), nullable=False)
+    passing_terms = Column(String(255), nullable=False)
+    delivery_terms = Column(String(255), nullable=False)
+    payment_terms = Column(String(255), nullable=False)
+    location = Column(String(255), nullable=False)
+
+    # Quality Specifications
+    quality_specs = Column(JSON)
+
+    # Additional Terms
+    manual_terms = Column(Text)
+
+    # Status
+    status = Column(
+        Enum('Active', 'Completed', 'Disputed', 'Carried Forward', 'Amended',
+             'Pending Approval', 'Rejected', name='contract_status'),
+        nullable=False,
+        default='Active'
+    )
+
+    # CCI Details
+    cci_contract_no = Column(String(100))
+    cci_term_id = Column(Integer, ForeignKey('cci_terms.id'))
+
+
+
+class Invoice(Base, TimestampMixin):
+    """Invoice table."""
+
+    __tablename__ = "invoices"
+
+    id = Column(String(36), primary_key=True)
+    invoice_no = Column(String(50), unique=True, nullable=False, index=True)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False, index=True)
+    financial_year = Column(String(20), nullable=False, index=True)
+    sales_contract_id = Column(String(36), ForeignKey('sales_contracts.id'), nullable=False)
+    date = Column(DateTime, nullable=False)
+    amount = Column(Float, nullable=False)
+    status = Column(
+        Enum('Unpaid', 'Partially Paid', 'Paid', name='invoice_status'),
+        nullable=False,
+        default='Unpaid'
+    )
+
+
+class Payment(Base, TimestampMixin):
+    """Payment table."""
+
+    __tablename__ = "payments"
+
+    id = Column(String(36), primary_key=True)
+    payment_id = Column(String(50), unique=True, nullable=False, index=True)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False, index=True)
+    financial_year = Column(String(20), nullable=False, index=True)
+    invoice_id = Column(String(36), ForeignKey('invoices.id'), nullable=False)
+    date = Column(DateTime, nullable=False)
+    amount = Column(Float, nullable=False)
+    method = Column(
+        Enum('Bank Transfer', 'Cheque', 'Cash', name='payment_method'),
+        nullable=False
+    )
+
+
+class Dispute(Base, TimestampMixin):
+    """Dispute table."""
+
+    __tablename__ = "disputes"
+
+    id = Column(String(36), primary_key=True)
+    dispute_id = Column(String(50), unique=True, nullable=False, index=True)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False, index=True)
+    financial_year = Column(String(20), nullable=False, index=True)
+    sales_contract_id = Column(String(36), ForeignKey('sales_contracts.id'), nullable=False)
+    reason = Column(Text, nullable=False)
+    status = Column(
+        Enum('Open', 'Resolved', 'Closed', name='dispute_status'),
+        nullable=False,
+        default='Open'
+    )
+    resolution = Column(Text)
+    date_raised = Column(DateTime, nullable=False)
+
+
+class Commission(Base, TimestampMixin):
+    """Commission table."""
+
+    __tablename__ = "commissions"
+
+    id = Column(String(36), primary_key=True)
+    commission_id = Column(String(50), unique=True, nullable=False, index=True)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False, index=True)
+    financial_year = Column(String(20), nullable=False, index=True)
+    sales_contract_id = Column(String(36), ForeignKey('sales_contracts.id'), nullable=False)
+    agent = Column(String(255), nullable=False)
+    amount = Column(Float, nullable=False)
+    status = Column(
+        Enum('Due', 'Paid', name='commission_status'),
+        nullable=False,
+        default='Due'
+    )
+
+
+class AuditLog(Base, TimestampMixin):
+    """Audit log table for tracking all system changes."""
+
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    user = Column(String(255), nullable=False)
+    role = Column(
+        Enum('Admin', 'Sales', 'Accounts', 'Dispute Manager', 'Vendor/Client', name='user_role_audit'),
+        nullable=False
+    )
+    module = Column(String(100), nullable=False)
+    action = Column(String(100), nullable=False)
+    details = Column(Text, nullable=False)
+    reason = Column(Text)
+
+
+class UserAuditLog(Base, TimestampMixin):
+    """User audit log table for tracking user activities."""
+
+    __tablename__ = "user_audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
+    action = Column(String(100), nullable=False, index=True)  # login, logout, create, update, delete, etc.
+    entity_type = Column(String(100), nullable=True)  # Type of entity affected
+    entity_id = Column(String(100), nullable=True)  # ID of entity affected
+    ip_address = Column(String(50), nullable=True)
+    user_agent = Column(String(500), nullable=True)
+    details = Column(JSON, nullable=True)  # Additional context
+    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    # Relationship
+    user = relationship("User", backref="audit_logs")
+
+
+class MasterDataItem(Base, TimestampMixin):
+    """Generic master data table for various configurations."""
+
+    __tablename__ = "master_data_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    category = Column(String(100), nullable=False, index=True)  # e.g., 'variety', 'quality_parameter'
+    name = Column(String(255), nullable=False)
+    code = Column(String(50))
+    description = Column(Text)
+    is_active = Column(Boolean, default=True)
+    metadata_json = Column(JSON)  # Additional flexible data
+
+
+class Commodity(Base, TimestampMixin):
+    """Dedicated Commodity Master table for product/variety management."""
+
+    __tablename__ = "commodities"
+
+    id = Column(Integer, primary_key=True, index=True)
+    commodity_code = Column(String(50), unique=True, nullable=False, index=True)
+    commodity_name = Column(String(255), nullable=False, index=True)
+    commodity_type = Column(String(100), nullable=False)  # e.g., 'Cotton', 'Wheat', 'Rice'
+    variety = Column(String(255))  # Specific variety within commodity type
+    grade = Column(String(100))  # Quality grade
+    hsn_code = Column(String(50), index=True)  # HSN code for taxation
+    uom = Column(String(50), default='BALES')  # Unit of measurement (BALES, KG, QUINTAL, MT)
+    description = Column(Text)
+    quality_parameters = Column(JSON)  # Store quality specs like length, mic, rd, etc.
+    is_active = Column(Boolean, default=True, index=True)
+    metadata_json = Column(JSON)  # Additional flexible data (renamed from 'metadata' to avoid conflict)
+
+
+class StructuredTerm(Base, TimestampMixin):
+    """Structured terms for payments, delivery, etc."""
+
+    __tablename__ = "structured_terms"
+
+    id = Column(Integer, primary_key=True, index=True)
+    category = Column(String(100), nullable=False, index=True)  # 'payment', 'delivery', 'passing', etc.
+    name = Column(String(255), nullable=False)
+    days = Column(Integer, nullable=False)
+    description = Column(Text)
+    is_active = Column(Boolean, default=True)
 
 
 class Role(Base, TimestampMixin):
-    """User roles (Admin, Sales, Buyer Partner, Seller Partner, etc.)."""
+    """User roles for RBAC."""
 
     __tablename__ = "roles"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), unique=True, nullable=False)
+    name = Column(String(100), unique=True, nullable=False, index=True)
     description = Column(Text)
-    
+    is_active = Column(Boolean, default=True)
+
     # Relationships
+    permissions = relationship("Permission", back_populates="role", cascade="all, delete-orphan")
     users = relationship("User", back_populates="role")
-    permissions = relationship("Permission", back_populates="role")
 
 
 class Permission(Base, TimestampMixin):
-    """Role-based permissions."""
+    """Permissions for role-based access control."""
 
     __tablename__ = "permissions"
 
     id = Column(Integer, primary_key=True, index=True)
     role_id = Column(Integer, ForeignKey('roles.id'), nullable=False)
-    module = Column(String(100), nullable=False)  # e.g., 'trade_desk', 'settings'
-    action = Column(String(100), nullable=False)  # e.g., 'create', 'read', 'update', 'delete'
-    
+    module = Column(String(100), nullable=False)  # 'Sales Contracts', 'Invoices', etc.
+    can_create = Column(Boolean, default=False)
+    can_read = Column(Boolean, default=False)
+    can_update = Column(Boolean, default=False)
+    can_delete = Column(Boolean, default=False)
+    can_approve = Column(Boolean, default=False)
+    can_share = Column(Boolean, default=False)
+
     # Relationships
     role = relationship("Role", back_populates="permissions")
 
 
-# ============================================================================
-# SETTINGS MODULE
-# ============================================================================
+class Setting(Base, TimestampMixin):
+    """System settings and configuration."""
+
+    __tablename__ = "settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    category = Column(String(100), nullable=False, index=True)  # 'system', 'email', 'notification', etc.
+    key = Column(String(255), unique=True, nullable=False, index=True)
+    value = Column(Text)
+    value_type = Column(String(50), default='string')  # 'string', 'number', 'boolean', 'json'
+    description = Column(Text)
+    is_public = Column(Boolean, default=False)  # Whether setting can be viewed by non-admins
+    is_editable = Column(Boolean, default=True)  # Whether setting can be modified via UI
+
+
+class Document(Base, TimestampMixin):
+    """Document/file storage table for managing uploaded files."""
+
+    __tablename__ = "documents"
+
+    id = Column(String(36), primary_key=True)
+    entity_type = Column(String(100), nullable=False, index=True)  # e.g., 'business_partner', 'sales_contract'
+    entity_id = Column(String(36), nullable=False, index=True)  # ID of the related entity
+    document_type = Column(String(100), nullable=False)  # e.g., 'PAN', 'GST', 'Invoice', 'Contract'
+    file_name = Column(String(500), nullable=False)
+    file_size = Column(Integer)  # Size in bytes
+    file_type = Column(String(100))  # MIME type
+    storage_path = Column(String(1000), nullable=False)  # Cloud storage path (GCS/S3)
+    storage_url = Column(String(1000))  # Public/signed URL
+    uploaded_by = Column(Integer, ForeignKey('users.id'))
+    description = Column(Text)
+    is_active = Column(Boolean, default=True)
+    is_public = Column(Boolean, default=False)
+    metadata_json = Column(JSON)  # Additional file metadata
+
+
+class EmailTemplate(Base, TimestampMixin):
+    """Email templates for automated notifications."""
+
+    __tablename__ = "email_templates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), unique=True, nullable=False, index=True)
+    category = Column(String(100), nullable=False, index=True)  # 'notification', 'alert', 'report'
+    subject = Column(String(500), nullable=False)
+    body_html = Column(Text, nullable=False)  # HTML template
+    body_text = Column(Text)  # Plain text fallback
+    variables = Column(JSON)  # List of template variables
+    is_active = Column(Boolean, default=True)
+    description = Column(Text)
+
+
+class EmailLog(Base, TimestampMixin):
+    """Email log for tracking sent emails."""
+
+    __tablename__ = "email_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    template_id = Column(Integer, ForeignKey('email_templates.id'))
+    recipient = Column(String(500), nullable=False)
+    cc = Column(String(1000))
+    bcc = Column(String(1000))
+    subject = Column(String(500), nullable=False)
+    body = Column(Text)
+    status = Column(
+        Enum('pending', 'sent', 'failed', 'bounced', name='email_status'),
+        default='pending',
+        nullable=False,
+        index=True
+    )
+    sent_at = Column(DateTime)
+    error_message = Column(Text)
+    metadata_json = Column(JSON)  # Additional tracking data
+
+
+class DataRetentionPolicy(Base, TimestampMixin):
+    """Data retention policies for compliance."""
+
+    __tablename__ = "data_retention_policies"
+
+    id = Column(Integer, primary_key=True, index=True)
+    entity_type = Column(String(100), unique=True, nullable=False, index=True)
+    retention_days = Column(Integer, nullable=False)  # How long to keep data
+    archive_after_days = Column(Integer)  # When to archive
+    delete_after_days = Column(Integer)  # When to permanently delete
+    policy_type = Column(String(100), nullable=False)  # 'legal', 'business', 'regulatory'
+    description = Column(Text)
+    is_active = Column(Boolean, default=True)
+
+
+class DataAccessLog(Base, TimestampMixin):
+    """Access logs for sensitive data (GDPR/compliance)."""
+
+    __tablename__ = "data_access_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    entity_type = Column(String(100), nullable=False, index=True)
+    entity_id = Column(String(100), nullable=False, index=True)
+    action = Column(String(100), nullable=False)  # 'view', 'export', 'modify', 'delete'
+    ip_address = Column(String(50))
+    user_agent = Column(String(500))
+    accessed_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    purpose = Column(Text)  # Why the data was accessed
+    metadata_json = Column(JSON)
+
+
+class ConsentRecord(Base, TimestampMixin):
+    """User consent records for GDPR compliance."""
+
+    __tablename__ = "consent_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id'))
+    business_partner_id = Column(String(36), ForeignKey('business_partners.id'))
+    consent_type = Column(String(100), nullable=False)  # 'data_processing', 'marketing', 'third_party'
+    consent_given = Column(Boolean, default=False)
+    consent_date = Column(DateTime, nullable=False)
+    withdrawn_date = Column(DateTime)
+    ip_address = Column(String(50))
+    metadata_json = Column(JSON)
+
+
+class DataExportRequest(Base, TimestampMixin):
+    """GDPR data export requests."""
+
+    __tablename__ = "data_export_requests"
+
+    id = Column(String(36), primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'))
+    business_partner_id = Column(String(36), ForeignKey('business_partners.id'))
+    request_type = Column(String(100), nullable=False)  # 'export', 'deletion'
+    status = Column(
+        Enum('pending', 'processing', 'completed', 'failed', name='export_status'),
+        default='pending',
+        nullable=False,
+        index=True
+    )
+    requested_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    completed_at = Column(DateTime)
+    export_file_path = Column(String(1000))
+    metadata_json = Column(JSON)
+
+
+class SecurityEvent(Base, TimestampMixin):
+    """Security events and incidents log."""
+
+    __tablename__ = "security_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    event_type = Column(String(100), nullable=False, index=True)  # 'login_failed', 'access_denied', 'suspicious_activity'
+    severity = Column(
+        Enum('low', 'medium', 'high', 'critical', name='severity_level'),
+        nullable=False,
+        index=True
+    )
+    user_id = Column(Integer, ForeignKey('users.id'))
+    ip_address = Column(String(50))
+    user_agent = Column(String(500))
+    description = Column(Text, nullable=False)
+    occurred_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    resolved = Column(Boolean, default=False)
+    resolved_at = Column(DateTime)
+    metadata_json = Column(JSON)
+
+
+class SystemConfiguration(Base, TimestampMixin):
+    """System configuration for encryption, storage, etc."""
+
+    __tablename__ = "system_configurations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    config_key = Column(String(255), unique=True, nullable=False, index=True)
+    config_value = Column(Text)
+    config_type = Column(String(50), default='string')  # 'string', 'json', 'encrypted'
+    category = Column(String(100), nullable=False, index=True)  # 'storage', 'email', 'security', 'compliance'
+    is_encrypted = Column(Boolean, default=False)
+    is_sensitive = Column(Boolean, default=False)
+    description = Column(Text)
+    is_active = Column(Boolean, default=True)
+
 
 class Organization(Base, TimestampMixin):
-    """Organization/Company master."""
+    """Organization table for multi-company support."""
 
     __tablename__ = "organizations"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(255), nullable=False)
-    code = Column(String(50), unique=True, nullable=False, index=True)
-    organization_type = Column(String(50))  # PROPRIETORSHIP, PARTNERSHIP, etc.
-    address = Column(Text)
-    city = Column(String(100))
-    state = Column(String(100))
-    pincode = Column(String(10))
-    country = Column(String(100), default='India')
-    phone = Column(String(20))
-    email = Column(String(255))
+    legal_name = Column(String(255), nullable=False)
+    display_name = Column(String(255), nullable=False)
+    pan = Column(String(50), unique=True, nullable=False, index=True)
     gstin = Column(String(50), unique=True, index=True)
-    pan = Column(String(20), index=True)
-    tan = Column(String(20))
-    cin = Column(String(50))
-    bank_name = Column(String(255))
-    account_number = Column(String(50))
-    ifsc_code = Column(String(20))
-    branch = Column(String(255))
-    website = Column(String(255))
+    address = Column(JSON)  # Registered address as JSON
     logo_url = Column(String(500))
+    settings = Column(JSON)  # Organization-specific settings
     is_active = Column(Boolean, default=True, index=True)
-    
+
     # Relationships
     financial_years = relationship("FinancialYear", back_populates="organization")
 
 
-class Location(Base, TimestampMixin):
-    """Location hierarchy (Country > State > Region > City/Station)."""
-
-    __tablename__ = "locations"
-
-    id = Column(Integer, primary_key=True, index=True)
-    country = Column(String(100), nullable=False, index=True)
-    state = Column(String(100), nullable=False, index=True)
-    region = Column(String(100), index=True)  # Optional: Vidarbha, Saurashtra, etc.
-    city = Column(String(100), nullable=False, index=True)  # Also called Station
-
-
-class CciTerm(Base, TimestampMixin):
-    """CCI (Cotton Corporation of India) Terms configuration."""
-
-    __tablename__ = "cci_terms"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(255), nullable=False)
-    
-    # Versioning
-    effective_from = Column(DateTime, nullable=False)
-    effective_to = Column(DateTime)
-    version = Column(Integer, default=1)
-    is_active = Column(Boolean, default=True, index=True)
-    
-    # Core Financial Parameters
-    candy_factor = Column(Numeric(10, 4), nullable=False)  # e.g., 0.2812
-    gst_rate = Column(Numeric(5, 2), nullable=False)  # e.g., 5.00
-    
-    # EMD Configuration (JSON for buyer type percentages)
-    emd_by_buyer_type = Column(JSON)  # {"kvic": 5, "privateMill": 10, "trader": 15}
-    emd_payment_days = Column(Integer)
-    emd_interest_percent = Column(Numeric(5, 2))
-    emd_late_interest_percent = Column(Numeric(5, 2))
-    emd_block_do_if_not_full = Column(Boolean, default=True)
-    
-    # Carrying Charges
-    carrying_charge_tier1_days = Column(Integer)
-    carrying_charge_tier1_percent = Column(Numeric(5, 2))
-    carrying_charge_tier2_days = Column(Integer)
-    carrying_charge_tier2_percent = Column(Numeric(5, 2))
-    
-    # Late Lifting Charges
-    free_lifting_period_days = Column(Integer)
-    late_lifting_tier1_days = Column(Integer)
-    late_lifting_tier1_percent = Column(Numeric(5, 2))
-    late_lifting_tier2_days = Column(Integer)
-    late_lifting_tier2_percent = Column(Numeric(5, 2))
-    late_lifting_tier3_percent = Column(Numeric(5, 2))
-    
-    # Payment & Discount
-    cash_discount_percentage = Column(Numeric(5, 2))
-    interest_lc_bg_percent = Column(Numeric(5, 2))
-    penal_interest_lc_bg_percent = Column(Numeric(5, 2))
-    
-    # Additional Deposits
-    additional_deposit_percent = Column(Numeric(5, 2))
-    deposit_interest_percent = Column(Numeric(5, 2))
-    
-    # Periods
-    lifting_period_days = Column(Integer)
-    contract_period_days = Column(Integer)
-    
-    # Lock-in Charges
-    lockin_charge_min = Column(Numeric(10, 2))  # Rs/bale
-    lockin_charge_max = Column(Numeric(10, 2))  # Rs/bale
-    
-    # Moisture Adjustment
-    moisture_lower_limit = Column(Numeric(5, 2))  # e.g., 7.00%
-    moisture_upper_limit = Column(Numeric(5, 2))  # e.g., 9.00%
-    moisture_sample_count = Column(Integer)
-    
-    # Email Configuration
-    email_reminder_days = Column(Integer)
-    email_template_emd_reminder = Column(Text)
-    email_template_payment_due = Column(Text)
-
-
-class Commodity(Base, TimestampMixin):
-    """Commodity/Product master with trading parameters."""
-
-    __tablename__ = "commodities"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(255), nullable=False, index=True)  # Cotton, Wheat, Rice
-    symbol = Column(String(10), unique=True, nullable=False)  # CTN, WHT, RIC
-    unit = Column(String(50), nullable=False)  # Bales, Kgs, Tonnes
-    rate_unit = Column(String(50))  # Candy (for cotton rate basis)
-    
-    # GST Configuration
-    hsn_code = Column(String(50), index=True)
-    gst_rate = Column(Numeric(5, 2))  # Auto-determined from HSN
-    gst_exemption_available = Column(Boolean, default=False)
-    gst_category = Column(String(50))  # Agricultural, Processed, Industrial, Service
-    is_processed = Column(Boolean, default=False)
-    
-    # Trading Parameters (stored as JSON arrays)
-    trade_types = Column(JSON)  # [{"id": 1, "name": "Purchase"}, ...]
-    bargain_types = Column(JSON)  # [{"id": 1, "name": "FOB"}, ...]
-    varieties = Column(JSON)  # [{"id": 1, "name": "Shankar-6"}, ...]
-    weightment_terms = Column(JSON)
-    passing_terms = Column(JSON)
-    delivery_terms = Column(JSON)  # Structured terms with days
-    payment_terms = Column(JSON)  # Structured terms with days
-    commissions = Column(JSON)  # Commission structures
-    
-    # Quality Parameters Configuration
-    quality_parameters = Column(JSON)  # Array of parameter definitions
-    certificates = Column(JSON)  # Array of available certificates ["NPOP", "Organic", ...]
-    
-    # CCI Support
-    supports_cci_terms = Column(Boolean, default=False)  # Only for cotton
-    
-    description = Column(Text)
-    is_active = Column(Boolean, default=True, index=True)
-
-
-# ============================================================================
-# BUSINESS PARTNER MODULE
-# ============================================================================
-
-class BusinessPartner(Base, TimestampMixin):
-    """Business partner (buyer/seller) master."""
-
-    __tablename__ = "business_partners"
-
-    id = Column(String(50), primary_key=True)  # UUID
-    bp_code = Column(String(50), unique=True, nullable=False, index=True)
-    legal_name = Column(String(255), nullable=False)
-    business_type = Column(Enum('BUYER', 'SELLER', 'BOTH', 'AGENT', name='business_type'), nullable=False)
-    status = Column(String(50), default='ACTIVE')
-    
-    # Contact Information
-    contact_person = Column(String(255))
-    contact_email = Column(String(255))
-    contact_phone = Column(String(20))
-    
-    # Address
-    address_line1 = Column(String(255))
-    address_line2 = Column(String(255))
-    city = Column(String(100))
-    state = Column(String(100))
-    pincode = Column(String(10))
-    country = Column(String(100), default='India')
-    
-    # Legal Documents
-    pan = Column(String(20), index=True)
-    gstin = Column(String(50), index=True)
-    
-    # Banking
-    bank_name = Column(String(255))
-    bank_account_no = Column(String(50))
-    bank_ifsc = Column(String(20))
-    
-    # Relationships
-    addresses = relationship("Address", back_populates="business_partner")
-
-
-class Address(Base, TimestampMixin):
-    """Additional shipping/billing addresses for business partners."""
-
-    __tablename__ = "addresses"
-
-    id = Column(String(50), primary_key=True)  # UUID
-    business_partner_id = Column(String(50), ForeignKey('business_partners.id'), nullable=False)
-    address_line1 = Column(String(255), nullable=False)
-    address_line2 = Column(String(255))
-    city = Column(String(100), nullable=False)
-    state = Column(String(100), nullable=False)
-    pincode = Column(String(10), nullable=False)
-    country = Column(String(100), default='India')
-    is_default = Column(Boolean, default=False)
-    
-    # Relationships
-    business_partner = relationship("BusinessPartner", back_populates="addresses")
-
-
-# ============================================================================
-# FINANCIAL YEAR MODULE
-# ============================================================================
-
 class FinancialYear(Base, TimestampMixin):
-    """Financial year (April-March for India)."""
+    """Financial year table for Indian accounting (April-March)."""
 
     __tablename__ = "financial_years"
 
     id = Column(Integer, primary_key=True, index=True)
     organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False, index=True)
-    year_code = Column(String(20), nullable=False, index=True)  # "2023-24"
+    year_code = Column(String(20), nullable=False, index=True)  # e.g., "2023-24"
     start_date = Column(DateTime, nullable=False)  # April 1
     end_date = Column(DateTime, nullable=False)  # March 31
-    assessment_year = Column(String(20), nullable=False)  # "2024-25"
-    is_active = Column(Boolean, default=False, index=True)
-    is_closed = Column(Boolean, default=False, index=True)
-    opening_balances = Column(JSON)
-    
+    assessment_year = Column(String(20), nullable=False)  # e.g., "2024-25" (FY + 1)
+    is_active = Column(Boolean, default=False, index=True)  # Current active year
+    is_closed = Column(Boolean, default=False, index=True)  # Year-end closed
+    opening_balances = Column(JSON)  # Opening balances for this year
+
     # Relationships
     organization = relationship("Organization", back_populates="financial_years")
     transfers_from = relationship(
@@ -329,22 +683,22 @@ class FinancialYear(Base, TimestampMixin):
 
 
 class YearEndTransfer(Base, TimestampMixin):
-    """Year-end data transfer log."""
+    """Year-end transfer log for tracking data moved between financial years."""
 
     __tablename__ = "year_end_transfers"
 
     id = Column(Integer, primary_key=True, index=True)
-    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False, index=True)
     from_financial_year_id = Column(Integer, ForeignKey('financial_years.id'), nullable=False)
     to_financial_year_id = Column(Integer, ForeignKey('financial_years.id'), nullable=False)
     transfer_date = Column(DateTime, default=datetime.utcnow, nullable=False)
-    transfer_type = Column(String(100), nullable=False)
-    entity_type = Column(String(100), nullable=False)
+    transfer_type = Column(String(100), nullable=False, index=True)  # 'pending_invoices', 'opening_balances', etc.
+    entity_type = Column(String(100), nullable=False)  # 'invoice', 'payment', 'commission', 'dispute'
     entity_count = Column(Integer, default=0)
-    transfer_summary = Column(JSON)
-    performed_by = Column(String(255), nullable=False)
+    transfer_summary = Column(JSON)  # Details of what was transferred
+    performed_by = Column(String(255), nullable=False)  # User who performed the transfer
     notes = Column(Text)
-    
+
     # Relationships
     from_financial_year = relationship(
         "FinancialYear",
@@ -358,191 +712,261 @@ class YearEndTransfer(Base, TimestampMixin):
     )
 
 
-# ============================================================================
-# TRADE DESK MODULE (NEW)
-# ============================================================================
+# ========== NEW MODELS FOR ENHANCED ACCESS CONTROL (PHASE 1) ==========
 
-class Trade(Base, TimestampMixin):
-    """Trade request/demand from buyer."""
+class UserBranch(Base, TimestampMixin):
+    """User branch assignments for multi-branch access control."""
 
-    __tablename__ = "trades"
+    __tablename__ = "user_branches"
 
-    id = Column(Integer, primary_key=True, index=True)
-    action = Column(Enum('buy', 'sell', name='trade_action'), nullable=False)
-    buyer_id = Column(String(50), ForeignKey('business_partners.id'), nullable=False, index=True)
-    commodity_id = Column(Integer, ForeignKey('commodities.id'), nullable=False, index=True)
-    
-    # Quantity & Unit
-    quantity = Column(Numeric(15, 2), nullable=False)
-    unit = Column(String(50), nullable=False)
-    variety_id = Column(Integer)  # Reference to variety in commodity.varieties JSON
-    
-    # Quality Parameters (ranges)
-    parameters = Column(JSON, nullable=False)  # {"staple_mm": {"min": 28, "max": 30}, ...}
-    
-    # Trading Terms
-    trade_type_id = Column(Integer)
-    bargain_type_id = Column(Integer)
-    passing_id = Column(Integer)
-    weightment_id = Column(Integer)
-    delivery_term_id = Column(Integer)
-    delivery_days = Column(Integer)
-    payment_term_id = Column(Integer)
-    payment_days = Column(Integer)
-    
-    # Location
-    location_state_id = Column(Integer)
-    location_region_id = Column(Integer)
-    location_station_id = Column(Integer)
-    
-    # Certificates & Pricing
-    certificates = Column(JSON)  # ["NPOP", "Organic", ...]
-    target_price = Column(Numeric(15, 2))
-    currency = Column(String(10), default='INR')
-    price_unit = Column(String(50))  # per_candy, per_quintal, etc.
-    
-    # Additional Info
-    notes = Column(Text)
-    urgency = Column(Enum('normal', 'urgent', name='urgency_level'), default='normal')
-    
-    # Status & Lifecycle
-    status = Column(
-        Enum('DRAFT', 'POSTED', 'OFFERS_RECEIVED', 'NEGOTIATION', 'AGREED', 
-             'CONTRACT_CREATED', 'COMPLETED', 'CANCELLED', 'EXPIRED', name='trade_status'),
-        default='DRAFT',
-        index=True
-    )
-    expires_at = Column(DateTime)
-    assigned_to_user_id = Column(Integer, ForeignKey('users.id'))
-    
+    id = Column(String(36), primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    branch_id = Column(String(36), ForeignKey('business_branches.id', ondelete='CASCADE'), nullable=False, index=True)
+
     # Relationships
-    buyer = relationship("BusinessPartner", foreign_keys=[buyer_id])
-    commodity = relationship("Commodity")
-    offers = relationship("Offer", back_populates="trade")
+    user = relationship("User", backref="user_branches")
+    branch = relationship("BusinessBranch", backref="user_assignments")
 
 
-class Offer(Base, TimestampMixin):
-    """Seller offer for a trade."""
+class SubUser(Base, TimestampMixin):
+    """Sub-users table - max 2 per parent user."""
 
-    __tablename__ = "offers"
+    __tablename__ = "sub_users"
 
-    id = Column(Integer, primary_key=True, index=True)
-    trade_id = Column(Integer, ForeignKey('trades.id'), nullable=False, index=True)
-    seller_id = Column(String(50), ForeignKey('business_partners.id'), nullable=False, index=True)
-    station_id = Column(Integer, ForeignKey('locations.id'), nullable=False)
-    
-    # Pricing
-    price = Column(Numeric(15, 2), nullable=False)
-    currency = Column(String(10), default='INR')
-    price_unit = Column(String(50), nullable=False)
-    
-    # Quantity
-    quantity = Column(Numeric(15, 2), nullable=False)
-    unit = Column(String(50), nullable=False)
-    variety_id = Column(Integer)
-    
-    # Quality Parameters (actual values)
-    parameters = Column(JSON, nullable=False)  # {"staple_mm": 29.0, "mic": 4.1, ...}
-    
-    # Test Report
-    test_report_url = Column(String(500))
-    test_report_date = Column(DateTime)
-    tested_lot_id = Column(Integer, ForeignKey('tested_lots.id'))
-    
-    # Terms
-    delivery_term_id = Column(Integer)
-    payment_term_id = Column(Integer)
-    
-    # Validity
-    valid_until = Column(DateTime, nullable=False)
-    validity_hours = Column(Integer)
-    
-    # Match Score
-    match_score = Column(Numeric(5, 2))  # 0-100
-    match_breakdown = Column(JSON)  # {"parameterScore": 100, "priceScore": 98, ...}
-    parameter_deviations = Column(JSON)  # Array of deviation details
-    
-    # Notes & Status
-    notes = Column(Text)
-    status = Column(
-        Enum('PENDING', 'COUNTERED', 'ACCEPTED', 'REJECTED', 'EXPIRED', name='offer_status'),
-        default='PENDING',
-        index=True
-    )
-    negotiation_version = Column(Integer, default=1)
-    
+    id = Column(String(36), primary_key=True)
+    parent_user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    sub_user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, unique=True, index=True)
+    is_active = Column(Boolean, default=True)
+
     # Relationships
-    trade = relationship("Trade", back_populates="offers")
-    seller = relationship("BusinessPartner", foreign_keys=[seller_id])
-    station = relationship("Location")
-    tested_lot = relationship("TestedLot")
-    negotiations = relationship("Negotiation", back_populates="offer")
+    parent = relationship("User", foreign_keys=[parent_user_id], backref="managed_sub_users")
+    sub_user = relationship("User", foreign_keys=[sub_user_id])
 
 
-class TestedLot(Base, TimestampMixin):
-    """Pre-tested commodity lot from seller."""
+class BusinessBranch(Base, TimestampMixin):
+    """Business branches for multi-branch support."""
 
-    __tablename__ = "tested_lots"
+    __tablename__ = "business_branches"
 
-    id = Column(Integer, primary_key=True, index=True)
-    seller_id = Column(String(50), ForeignKey('business_partners.id'), nullable=False, index=True)
-    commodity_id = Column(Integer, ForeignKey('commodities.id'), nullable=False, index=True)
-    station_id = Column(Integer, ForeignKey('locations.id'), nullable=False)
-    
-    # Quantity Management
-    quantity = Column(Numeric(15, 2), nullable=False)
-    quantity_available = Column(Numeric(15, 2), nullable=False)
-    quantity_offered = Column(Numeric(15, 2), default=0)
-    unit = Column(String(50), nullable=False)
-    variety_id = Column(Integer)
-    
-    # Quality Parameters
-    parameters = Column(JSON, nullable=False)
-    
-    # Test Report
-    test_report_url = Column(String(500), nullable=False)
-    test_report_date = Column(DateTime, nullable=False)
-    testing_lab = Column(String(255))
-    
-    # Validity & Status
-    valid_until = Column(DateTime, nullable=False)
-    notes = Column(Text)
-    status = Column(
-        Enum('ACTIVE', 'EXPIRED', 'DEPLETED', name='tested_lot_status'),
-        default='ACTIVE',
-        index=True
-    )
-    
-    # Matched Trades
-    matched_trade_ids = Column(JSON)  # Array of trade IDs
-    
+    id = Column(String(36), primary_key=True)
+    partner_id = Column(String(36), ForeignKey('business_partners.id', ondelete='CASCADE'), nullable=False, index=True)
+    branch_code = Column(String(50), nullable=False)
+    branch_name = Column(String(255), nullable=False)
+    state = Column(String(100), nullable=False)
+    gst_number = Column(String(15), unique=True, nullable=False)
+    address = Column(JSON, nullable=False)
+    contact_person = Column(JSON, nullable=True)
+    bank_details = Column(JSON, nullable=True)
+    is_head_office = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)
+
     # Relationships
-    seller = relationship("BusinessPartner")
-    commodity = relationship("Commodity")
-    station = relationship("Location")
+    partner = relationship("BusinessPartner", backref="branches")
 
 
-class Negotiation(Base, TimestampMixin):
-    """Negotiation history for an offer."""
+class AmendmentRequest(Base, TimestampMixin):
+    """Amendment requests for entities with approval workflow."""
 
-    __tablename__ = "negotiations"
+    __tablename__ = "amendment_requests"
 
-    id = Column(Integer, primary_key=True, index=True)
-    offer_id = Column(Integer, ForeignKey('offers.id'), nullable=False, index=True)
+    id = Column(String(36), primary_key=True)
+    entity_type = Column(String(50), nullable=False, index=True)  # business_partner, branch, user
+    entity_id = Column(String(36), nullable=False, index=True)
+    request_type = Column(String(50), nullable=False)  # UPDATE, DELETE
+    reason = Column(Text, nullable=False)
+    justification = Column(Text, nullable=True)
+    requested_by = Column(Integer, ForeignKey('users.id'), nullable=False)
+    requested_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    status = Column(String(50), default='PENDING', index=True)  # PENDING, APPROVED, REJECTED
+    reviewed_by = Column(Integer, ForeignKey('users.id'), nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    review_notes = Column(Text, nullable=True)
+    changes = Column(JSON, nullable=False)  # old_values and new_values
+    impact_assessment = Column(JSON, nullable=True)
+
+    # Relationships
+    requester = relationship("User", foreign_keys=[requested_by])
+    reviewer = relationship("User", foreign_keys=[reviewed_by])
+
+
+class BusinessPartnerVersion(Base, TimestampMixin):
+    """Version history for business partners."""
+
+    __tablename__ = "business_partner_versions"
+
+    id = Column(String(36), primary_key=True)
+    partner_id = Column(String(36), ForeignKey('business_partners.id', ondelete='CASCADE'), nullable=False, index=True)
     version = Column(Integer, nullable=False)
-    
-    # Sender Info
-    sender_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    sender_role = Column(Enum('buyer', 'seller', name='negotiation_role'), nullable=False)
-    
-    # Counter Offer Terms
-    new_price = Column(Numeric(15, 2))
-    new_quantity = Column(Numeric(15, 2))
-    new_valid_until = Column(DateTime)
-    
-    # Message
-    message = Column(Text, nullable=False)
-    
+    data = Column(JSON, nullable=False)  # Complete partner data at this version
+    changed_by = Column(Integer, ForeignKey('users.id'), nullable=True)
+    change_reason = Column(Text, nullable=True)
+    amendment_request_id = Column(String(36), ForeignKey('amendment_requests.id'), nullable=True)
+    valid_from = Column(DateTime, default=datetime.utcnow, nullable=False)
+    valid_to = Column(DateTime, nullable=True)
+
     # Relationships
-    offer = relationship("Offer", back_populates="negotiations")
-    sender = relationship("User")
+    partner = relationship("BusinessPartner", backref="versions")
+    user = relationship("User")
+    amendment = relationship("AmendmentRequest")
+
+
+class OnboardingApplication(Base, TimestampMixin):
+    """Self-service onboarding applications."""
+
+    __tablename__ = "onboarding_applications"
+
+    id = Column(String(36), primary_key=True)
+    application_number = Column(String(50), unique=True, nullable=False, index=True)
+    company_info = Column(JSON, nullable=False)
+    contact_info = Column(JSON, nullable=False)
+    compliance_info = Column(JSON, nullable=False)
+    branch_info = Column(JSON, nullable=True)
+    documents = Column(JSON, nullable=True)
+    status = Column(String(50), default='SUBMITTED', index=True)  # SUBMITTED, UNDER_REVIEW, APPROVED, REJECTED
+    review_notes = Column(Text, nullable=True)
+    reviewed_by = Column(Integer, ForeignKey('users.id'), nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+
+    # Relationships
+    reviewer = relationship("User")
+
+
+class ProfileUpdateRequest(Base, TimestampMixin):
+    """User profile update requests for approval workflow."""
+
+    __tablename__ = "profile_update_requests"
+
+    id = Column(String(36), primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
+    partner_id = Column(String(36), ForeignKey('business_partners.id'), nullable=True, index=True)
+    update_type = Column(String(50), nullable=False)  # CONTACT, ADDRESS, COMPLIANCE, DOCUMENT, BRANCH
+    old_values = Column(JSON, nullable=False)
+    new_values = Column(JSON, nullable=False)
+    reason = Column(Text, nullable=True)
+    status = Column(String(50), default='PENDING', index=True)  # PENDING, APPROVED, REJECTED
+    reviewed_by = Column(Integer, ForeignKey('users.id'), nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    review_notes = Column(Text, nullable=True)
+
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id])
+    partner = relationship("BusinessPartner")
+    reviewer = relationship("User", foreign_keys=[reviewed_by])
+
+
+class KYCVerification(Base, TimestampMixin):
+    """KYC verification records for business partners."""
+
+    __tablename__ = "kyc_verifications"
+
+    id = Column(String(36), primary_key=True)
+    partner_id = Column(String(36), ForeignKey('business_partners.id'), nullable=False, index=True)
+    verification_date = Column(DateTime, nullable=False)
+    verified_by = Column(Integer, ForeignKey('users.id'), nullable=False)
+    documents_checked = Column(JSON, nullable=False)  # List of documents verified
+    status = Column(String(50), nullable=False, index=True)  # CURRENT, DUE_SOON, OVERDUE
+    next_due_date = Column(DateTime, nullable=False)
+    notes = Column(Text, nullable=True)
+
+    # Relationships
+    partner = relationship("BusinessPartner", backref="kyc_records")
+    verifier = relationship("User")
+
+
+class KYCReminderLog(Base, TimestampMixin):
+    """KYC reminder logs for tracking sent reminders."""
+
+    __tablename__ = "kyc_reminder_logs"
+
+    id = Column(String(36), primary_key=True)
+    partner_id = Column(String(36), ForeignKey('business_partners.id'), nullable=False, index=True)
+    reminder_type = Column(String(50), nullable=False)  # 30_DAYS, 15_DAYS, 7_DAYS, 1_DAY, OVERDUE
+    sent_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    recipient_email = Column(String(255), nullable=False)
+
+    # Relationships
+    partner = relationship("BusinessPartner", backref="kyc_reminders")
+
+
+class CustomModule(Base, TimestampMixin):
+    """Custom modules for dynamic RBAC system."""
+
+    __tablename__ = "custom_modules"
+
+    id = Column(String(36), primary_key=True)
+    module_key = Column(String(100), unique=True, nullable=False, index=True)
+    display_name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    category = Column(String(50), nullable=True)
+    is_active = Column(Boolean, default=True)
+
+
+class CustomPermission(Base, TimestampMixin):
+    """Custom permissions for dynamic RBAC system."""
+
+    __tablename__ = "custom_permissions"
+
+    id = Column(String(36), primary_key=True)
+    module_id = Column(String(36), ForeignKey('custom_modules.id', ondelete='CASCADE'), nullable=False, index=True)
+    permission_key = Column(String(100), nullable=False)
+    action = Column(String(50), nullable=False)  # CREATE, READ, UPDATE, DELETE, EXECUTE, APPROVE
+    description = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True)
+
+    # Relationships
+    module = relationship("CustomModule", backref="permissions")
+
+
+class RolePermission(Base, TimestampMixin):
+    """Role permissions mapping for dynamic RBAC."""
+
+    __tablename__ = "role_permissions"
+
+    id = Column(String(36), primary_key=True)
+    role_id = Column(Integer, ForeignKey('roles.id', ondelete='CASCADE'), nullable=False, index=True)
+    permission_id = Column(String(36), ForeignKey('custom_permissions.id', ondelete='CASCADE'), nullable=False, index=True)
+    granted = Column(Boolean, default=True)
+
+    # Relationships
+    role = relationship("Role")
+    permission = relationship("CustomPermission")
+
+
+class UserPermissionOverride(Base, TimestampMixin):
+    """User-specific permission overrides."""
+
+    __tablename__ = "user_permission_overrides"
+
+    id = Column(String(36), primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    permission_id = Column(String(36), ForeignKey('custom_permissions.id', ondelete='CASCADE'), nullable=False, index=True)
+    granted = Column(Boolean, nullable=False)
+    reason = Column(Text, nullable=True)
+    granted_by = Column(Integer, ForeignKey('users.id'), nullable=True)
+    expires_at = Column(DateTime, nullable=True)
+
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id])
+    permission = relationship("CustomPermission")
+    granter = relationship("User", foreign_keys=[granted_by])
+
+
+class SuspiciousActivity(Base, TimestampMixin):
+    """Suspicious activities log for security monitoring."""
+
+    __tablename__ = "suspicious_activities"
+
+    id = Column(String(36), primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
+    activity_type = Column(String(50), nullable=False, index=True)  # RAPID_FIRE, GEO_ANOMALY, AFTER_HOURS, UNUSUAL_ACTION
+    details = Column(JSON, nullable=False)
+    risk_score = Column(Integer, nullable=False)  # 0-100
+    detected_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    reviewed = Column(Boolean, default=False)
+    reviewed_by = Column(Integer, ForeignKey('users.id'), nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    action_taken = Column(Text, nullable=True)
+
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id])
+    reviewer = relationship("User", foreign_keys=[reviewed_by])
