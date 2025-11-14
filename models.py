@@ -125,9 +125,6 @@ class User(Base, TimestampMixin):
     client = relationship("BusinessPartner", foreign_keys=[client_id])
     vendor = relationship("BusinessPartner", foreign_keys=[vendor_id])
     business_partner = relationship("BusinessPartner", foreign_keys=[business_partner_id])
-    sessions = relationship("Session", back_populates="user", cascade="all, delete-orphan")
-    password_reset_tokens = relationship("PasswordResetToken", back_populates="user", cascade="all, delete-orphan")
-    sub_user_invites = relationship("SubUserInvite", back_populates="parent_user", cascade="all, delete-orphan")
 
 
 class Address(Base, TimestampMixin):
@@ -199,8 +196,6 @@ class BusinessPartner(Base, TimestampMixin):
 
     # Relationships
     shipping_addresses = relationship("Address", back_populates="business_partner", cascade="all, delete-orphan")
-    certifications = relationship("PartnerCertification", back_populates="partner", cascade="all, delete-orphan")
-    verifications = relationship("PartnerVerification", back_populates="partner", cascade="all, delete-orphan")
 
 
 class SalesContract(Base, TimestampMixin):
@@ -321,7 +316,23 @@ class Dispute(Base, TimestampMixin):
     date_raised = Column(DateTime, nullable=False)
 
 
+class Commission(Base, TimestampMixin):
+    """Commission table."""
 
+    __tablename__ = "commissions"
+
+    id = Column(String(36), primary_key=True)
+    commission_id = Column(String(50), unique=True, nullable=False, index=True)
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=False, index=True)
+    financial_year = Column(String(20), nullable=False, index=True)
+    sales_contract_id = Column(String(36), ForeignKey('sales_contracts.id'), nullable=False)
+    agent = Column(String(255), nullable=False)
+    amount = Column(Float, nullable=False)
+    status = Column(
+        Enum('Due', 'Paid', name='commission_status'),
+        nullable=False,
+        default='Due'
+    )
 
 
 class AuditLog(Base, TimestampMixin):
@@ -516,16 +527,73 @@ class EmailLog(Base, TimestampMixin):
     metadata_json = Column(JSON)  # Additional tracking data
 
 
+class DataRetentionPolicy(Base, TimestampMixin):
+    """Data retention policies for compliance."""
+
+    __tablename__ = "data_retention_policies"
+
+    id = Column(Integer, primary_key=True, index=True)
+    entity_type = Column(String(100), unique=True, nullable=False, index=True)
+    retention_days = Column(Integer, nullable=False)  # How long to keep data
+    archive_after_days = Column(Integer)  # When to archive
+    delete_after_days = Column(Integer)  # When to permanently delete
+    policy_type = Column(String(100), nullable=False)  # 'legal', 'business', 'regulatory'
+    description = Column(Text)
+    is_active = Column(Boolean, default=True)
 
 
+class DataAccessLog(Base, TimestampMixin):
+    """Access logs for sensitive data (GDPR/compliance)."""
+
+    __tablename__ = "data_access_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    entity_type = Column(String(100), nullable=False, index=True)
+    entity_id = Column(String(100), nullable=False, index=True)
+    action = Column(String(100), nullable=False)  # 'view', 'export', 'modify', 'delete'
+    ip_address = Column(String(50))
+    user_agent = Column(String(500))
+    accessed_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    purpose = Column(Text)  # Why the data was accessed
+    metadata_json = Column(JSON)
 
 
+class ConsentRecord(Base, TimestampMixin):
+    """User consent records for GDPR compliance."""
+
+    __tablename__ = "consent_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id'))
+    business_partner_id = Column(String(36), ForeignKey('business_partners.id'))
+    consent_type = Column(String(100), nullable=False)  # 'data_processing', 'marketing', 'third_party'
+    consent_given = Column(Boolean, default=False)
+    consent_date = Column(DateTime, nullable=False)
+    withdrawn_date = Column(DateTime)
+    ip_address = Column(String(50))
+    metadata_json = Column(JSON)
 
 
+class DataExportRequest(Base, TimestampMixin):
+    """GDPR data export requests."""
 
+    __tablename__ = "data_export_requests"
 
-
-
+    id = Column(String(36), primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'))
+    business_partner_id = Column(String(36), ForeignKey('business_partners.id'))
+    request_type = Column(String(100), nullable=False)  # 'export', 'deletion'
+    status = Column(
+        Enum('pending', 'processing', 'completed', 'failed', name='export_status'),
+        default='pending',
+        nullable=False,
+        index=True
+    )
+    requested_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    completed_at = Column(DateTime)
+    export_file_path = Column(String(1000))
+    metadata_json = Column(JSON)
 
 
 class SecurityEvent(Base, TimestampMixin):
@@ -550,7 +618,20 @@ class SecurityEvent(Base, TimestampMixin):
     metadata_json = Column(JSON)
 
 
+class SystemConfiguration(Base, TimestampMixin):
+    """System configuration for encryption, storage, etc."""
 
+    __tablename__ = "system_configurations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    config_key = Column(String(255), unique=True, nullable=False, index=True)
+    config_value = Column(Text)
+    config_type = Column(String(50), default='string')  # 'string', 'json', 'encrypted'
+    category = Column(String(100), nullable=False, index=True)  # 'storage', 'email', 'security', 'compliance'
+    is_encrypted = Column(Boolean, default=False)
+    is_sensitive = Column(Boolean, default=False)
+    description = Column(Text)
+    is_active = Column(Boolean, default=True)
 
 
 class Organization(Base, TimestampMixin):
@@ -633,8 +714,18 @@ class YearEndTransfer(Base, TimestampMixin):
 
 # ========== NEW MODELS FOR ENHANCED ACCESS CONTROL (PHASE 1) ==========
 
+class UserBranch(Base, TimestampMixin):
+    """User branch assignments for multi-branch access control."""
 
+    __tablename__ = "user_branches"
 
+    id = Column(String(36), primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    branch_id = Column(String(36), ForeignKey('business_branches.id', ondelete='CASCADE'), nullable=False, index=True)
+
+    # Relationships
+    user = relationship("User", backref="user_branches")
+    branch = relationship("BusinessBranch", backref="user_assignments")
 
 
 class SubUser(Base, TimestampMixin):
@@ -698,8 +789,25 @@ class AmendmentRequest(Base, TimestampMixin):
     reviewer = relationship("User", foreign_keys=[reviewed_by])
 
 
+class BusinessPartnerVersion(Base, TimestampMixin):
+    """Version history for business partners."""
 
+    __tablename__ = "business_partner_versions"
 
+    id = Column(String(36), primary_key=True)
+    partner_id = Column(String(36), ForeignKey('business_partners.id', ondelete='CASCADE'), nullable=False, index=True)
+    version = Column(Integer, nullable=False)
+    data = Column(JSON, nullable=False)  # Complete partner data at this version
+    changed_by = Column(Integer, ForeignKey('users.id'), nullable=True)
+    change_reason = Column(Text, nullable=True)
+    amendment_request_id = Column(String(36), ForeignKey('amendment_requests.id'), nullable=True)
+    valid_from = Column(DateTime, default=datetime.utcnow, nullable=False)
+    valid_to = Column(DateTime, nullable=True)
+
+    # Relationships
+    partner = relationship("BusinessPartner", backref="versions")
+    user = relationship("User")
+    amendment = relationship("AmendmentRequest")
 
 
 class OnboardingApplication(Base, TimestampMixin):
@@ -723,8 +831,27 @@ class OnboardingApplication(Base, TimestampMixin):
     reviewer = relationship("User")
 
 
+class ProfileUpdateRequest(Base, TimestampMixin):
+    """User profile update requests for approval workflow."""
 
+    __tablename__ = "profile_update_requests"
 
+    id = Column(String(36), primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
+    partner_id = Column(String(36), ForeignKey('business_partners.id'), nullable=True, index=True)
+    update_type = Column(String(50), nullable=False)  # CONTACT, ADDRESS, COMPLIANCE, DOCUMENT, BRANCH
+    old_values = Column(JSON, nullable=False)
+    new_values = Column(JSON, nullable=False)
+    reason = Column(Text, nullable=True)
+    status = Column(String(50), default='PENDING', index=True)  # PENDING, APPROVED, REJECTED
+    reviewed_by = Column(Integer, ForeignKey('users.id'), nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    review_notes = Column(Text, nullable=True)
+
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id])
+    partner = relationship("BusinessPartner")
+    reviewer = relationship("User", foreign_keys=[reviewed_by])
 
 
 class KYCVerification(Base, TimestampMixin):
@@ -746,31 +873,107 @@ class KYCVerification(Base, TimestampMixin):
     verifier = relationship("User")
 
 
+class KYCReminderLog(Base, TimestampMixin):
+    """KYC reminder logs for tracking sent reminders."""
+
+    __tablename__ = "kyc_reminder_logs"
+
+    id = Column(String(36), primary_key=True)
+    partner_id = Column(String(36), ForeignKey('business_partners.id'), nullable=False, index=True)
+    reminder_type = Column(String(50), nullable=False)  # 30_DAYS, 15_DAYS, 7_DAYS, 1_DAY, OVERDUE
+    sent_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    recipient_email = Column(String(255), nullable=False)
+
+    # Relationships
+    partner = relationship("BusinessPartner", backref="kyc_reminders")
 
 
+class CustomModule(Base, TimestampMixin):
+    """Custom modules for dynamic RBAC system."""
+
+    __tablename__ = "custom_modules"
+
+    id = Column(String(36), primary_key=True)
+    module_key = Column(String(100), unique=True, nullable=False, index=True)
+    display_name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    category = Column(String(50), nullable=True)
+    is_active = Column(Boolean, default=True)
 
 
+class CustomPermission(Base, TimestampMixin):
+    """Custom permissions for dynamic RBAC system."""
+
+    __tablename__ = "custom_permissions"
+
+    id = Column(String(36), primary_key=True)
+    module_id = Column(String(36), ForeignKey('custom_modules.id', ondelete='CASCADE'), nullable=False, index=True)
+    permission_key = Column(String(100), nullable=False)
+    action = Column(String(50), nullable=False)  # CREATE, READ, UPDATE, DELETE, EXECUTE, APPROVE
+    description = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True)
+
+    # Relationships
+    module = relationship("CustomModule", backref="permissions")
 
 
+class RolePermission(Base, TimestampMixin):
+    """Role permissions mapping for dynamic RBAC."""
+
+    __tablename__ = "role_permissions"
+
+    id = Column(String(36), primary_key=True)
+    role_id = Column(Integer, ForeignKey('roles.id', ondelete='CASCADE'), nullable=False, index=True)
+    permission_id = Column(String(36), ForeignKey('custom_permissions.id', ondelete='CASCADE'), nullable=False, index=True)
+    granted = Column(Boolean, default=True)
+
+    # Relationships
+    role = relationship("Role")
+    permission = relationship("CustomPermission")
 
 
+class UserPermissionOverride(Base, TimestampMixin):
+    """User-specific permission overrides."""
+
+    __tablename__ = "user_permission_overrides"
+
+    id = Column(String(36), primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    permission_id = Column(String(36), ForeignKey('custom_permissions.id', ondelete='CASCADE'), nullable=False, index=True)
+    granted = Column(Boolean, nullable=False)
+    reason = Column(Text, nullable=True)
+    granted_by = Column(Integer, ForeignKey('users.id'), nullable=True)
+    expires_at = Column(DateTime, nullable=True)
+
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id])
+    permission = relationship("CustomPermission")
+    granter = relationship("User", foreign_keys=[granted_by])
 
 
+class SuspiciousActivity(Base, TimestampMixin):
+    """Suspicious activities log for security monitoring."""
 
+    __tablename__ = "suspicious_activities"
 
+    id = Column(String(36), primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
+    activity_type = Column(String(50), nullable=False, index=True)  # RAPID_FIRE, GEO_ANOMALY, AFTER_HOURS, UNUSUAL_ACTION
+    details = Column(JSON, nullable=False)
+    risk_score = Column(Integer, nullable=False)  # 0-100
+    detected_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    reviewed = Column(Boolean, default=False)
+    reviewed_by = Column(Integer, ForeignKey('users.id'), nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    action_taken = Column(Text, nullable=True)
 
-
-
-
-
-
-
-
-
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id])
+    reviewer = relationship("User", foreign_keys=[reviewed_by])
 
 
 # ============================================================================
-# NEW MODELS - Added based on frontend requirements
+# NEW MODELS - Added based on frontend requirements (keeping all existing 46)
 # ============================================================================
 
 
@@ -786,11 +989,8 @@ class Session(Base, TimestampMixin):
     last_activity = Column(DateTime, nullable=False)
     expires_at = Column(DateTime, nullable=False, index=True)
     is_active = Column(Boolean, default=True, nullable=False)
-    ip_address = Column(String(45))  # IPv6 compatible
+    ip_address = Column(String(45))
     user_agent = Column(Text)
-    
-    # Relationship
-    user = relationship("User", back_populates="sessions")
 
 
 class PasswordResetToken(Base, TimestampMixin):
@@ -803,13 +1003,10 @@ class PasswordResetToken(Base, TimestampMixin):
     token = Column(String(255), unique=True, nullable=False, index=True)
     expires_at = Column(DateTime, nullable=False)
     used_at = Column(DateTime)
-    
-    # Relationship
-    user = relationship("User", back_populates="password_reset_tokens")
 
 
 class PartnerCertification(Base, TimestampMixin):
-    """Product certifications for business partners (visible in trades)."""
+    """Product certifications for business partners."""
     
     __tablename__ = "partner_certifications"
     
@@ -819,7 +1016,7 @@ class PartnerCertification(Base, TimestampMixin):
     certification_name = Column(String(255), nullable=False)
     certification_body = Column(String(255), nullable=False)
     certificate_number = Column(String(100))
-    products_scope = Column(JSON)  # List of products covered
+    products_scope = Column(JSON)
     issue_date = Column(DateTime, nullable=False)
     expiry_date = Column(DateTime, nullable=False)
     status = Column(Enum("PENDING", "VERIFIED", "EXPIRED", "REJECTED", name="cert_status"), default="PENDING")
@@ -827,9 +1024,6 @@ class PartnerCertification(Base, TimestampMixin):
     verified_at = Column(DateTime)
     document_url = Column(String(500))
     is_visible_in_trade = Column(Boolean, default=True)
-    
-    # Relationship
-    partner = relationship("BusinessPartner", back_populates="certifications")
 
 
 class PartnerVerification(Base, TimestampMixin):
@@ -840,14 +1034,11 @@ class PartnerVerification(Base, TimestampMixin):
     id = Column(String(36), primary_key=True, index=True)
     partner_id = Column(String(36), ForeignKey("business_partners.id", ondelete="CASCADE"), nullable=False)
     verification_type = Column(Enum("EMAIL", "MOBILE", name="verification_type"), nullable=False)
-    value = Column(String(255), nullable=False)  # Email or phone number
+    value = Column(String(255), nullable=False)
     otp = Column(String(10), nullable=False)
     attempts = Column(Integer, default=0)
     verified_at = Column(DateTime)
     expires_at = Column(DateTime, nullable=False)
-    
-    # Relationship
-    partner = relationship("BusinessPartner", back_populates="verifications")
 
 
 class ApprovalWorkflow(Base, TimestampMixin):
@@ -877,18 +1068,15 @@ class SubUserInvite(Base, TimestampMixin):
     parent_user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     email = Column(String(255), nullable=False)
     name = Column(String(255), nullable=False)
-    branch_ids = Column(JSON, nullable=False)  # List of branch IDs
+    branch_ids = Column(JSON, nullable=False)
     permissions = Column(JSON, nullable=False)
     status = Column(Enum("PENDING", "ACCEPTED", "EXPIRED", "CANCELLED", name="invite_status"), default="PENDING")
     invite_token = Column(String(255), unique=True, nullable=False, index=True)
     expires_at = Column(DateTime, nullable=False)
-    
-    # Relationship
-    parent_user = relationship("User", back_populates="sub_user_invites")
 
 
 class Trade(Base, TimestampMixin):
-    """Trade requests from buyers (Trade Desk module)."""
+    """Trade requests from buyers."""
     
     __tablename__ = "trades"
     
@@ -904,14 +1092,8 @@ class Trade(Base, TimestampMixin):
     delivery_date = Column(DateTime)
     quality_parameters = Column(JSON)
     status = Column(Enum("OPEN", "MATCHED", "PARTIAL", "CLOSED", "CANCELLED", name="trade_status"), default="OPEN")
-    parsed_from_text = Column(Text)  # Original NLP input
+    parsed_from_text = Column(Text)
     created_by = Column(String(36), ForeignKey("users.id"), nullable=False)
-    
-    # Relationships
-    buyer = relationship("BusinessPartner", foreign_keys=[buyer_id])
-    commodity = relationship("Commodity")
-    location = relationship("Location", foreign_keys=[delivery_location_id])
-    offers = relationship("Offer", back_populates="trade")
 
 
 class Offer(Base, TimestampMixin):
@@ -930,20 +1112,13 @@ class Offer(Base, TimestampMixin):
     delivery_location_id = Column(Integer, ForeignKey("locations.id"))
     delivery_date = Column(DateTime)
     quality_specs = Column(JSON)
-    matching_score = Column(Float)  # Algorithm-calculated match score
+    matching_score = Column(Float)
     status = Column(Enum("PENDING", "ACCEPTED", "REJECTED", "NEGOTIATING", "EXPIRED", name="offer_status"), default="PENDING")
     created_by = Column(String(36), ForeignKey("users.id"), nullable=False)
-    
-    # Relationships
-    trade = relationship("Trade", back_populates="offers")
-    seller = relationship("BusinessPartner", foreign_keys=[seller_id])
-    tested_lot = relationship("TestedLot")
-    location = relationship("Location", foreign_keys=[delivery_location_id])
-    negotiations = relationship("Negotiation", back_populates="offer")
 
 
 class TestedLot(Base, TimestampMixin):
-    """Pre-tested commodity inventory for quick matching."""
+    """Pre-tested commodity inventory."""
     
     __tablename__ = "tested_lots"
     
@@ -960,11 +1135,6 @@ class TestedLot(Base, TimestampMixin):
     available_until = Column(DateTime)
     status = Column(Enum("AVAILABLE", "RESERVED", "SOLD", "EXPIRED", name="lot_status"), default="AVAILABLE")
     created_by = Column(String(36), ForeignKey("users.id"), nullable=False)
-    
-    # Relationships
-    seller = relationship("BusinessPartner", foreign_keys=[seller_id])
-    commodity = relationship("Commodity")
-    location = relationship("Location", foreign_keys=[storage_location_id])
 
 
 class Negotiation(Base, TimestampMixin):
@@ -982,8 +1152,4 @@ class Negotiation(Base, TimestampMixin):
     status = Column(Enum("PENDING", "ACCEPTED", "REJECTED", "COUNTERED", name="negotiation_status"), default="PENDING")
     responded_by = Column(String(36))
     responded_at = Column(DateTime)
-    
-    # Relationships
-    offer = relationship("Offer", back_populates="negotiations")
-    initiator = relationship("User", foreign_keys=[initiated_by])
 
