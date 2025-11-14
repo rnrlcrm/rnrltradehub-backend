@@ -35,11 +35,7 @@ from routes_complete import (
     dispute_router,
     commission_router,
     role_router,
-    setting_router,
-    master_data_router,
-    gst_rate_router,
-    location_router,
-    commission_structure_router,
+    settings_users_router,
     document_router,
     email_template_router,
     email_log_router,
@@ -49,6 +45,16 @@ from routes_complete import (
     export_request_router,
     security_event_router,
     sys_config_router
+)
+from routes_masters import (
+    organization_router,
+    financial_year_router,
+    commodity_router,
+    location_router,
+    gst_rate_router,
+    commission_structure_router,
+    setting_router,
+    master_data_router
 )
 from routes_export import export_router
 from routes_auth import auth_router, team_router
@@ -180,11 +186,17 @@ app.include_router(payment_router)
 app.include_router(dispute_router)
 app.include_router(commission_router)
 app.include_router(role_router)
+app.include_router(settings_users_router)
+
+# Master Data Routers (from routes_masters.py)
+app.include_router(organization_router)
+app.include_router(financial_year_router)
+app.include_router(commodity_router)
+app.include_router(location_router)
+app.include_router(gst_rate_router)
+app.include_router(commission_structure_router)
 app.include_router(setting_router)
 app.include_router(master_data_router)
-app.include_router(gst_rate_router)
-app.include_router(location_router)
-app.include_router(commission_structure_router)
 
 # File Storage & Documents
 app.include_router(document_router)

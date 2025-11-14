@@ -917,3 +917,261 @@ class SubUserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ========== MASTER DATA SCHEMAS ==========
+
+# Organization Schemas
+class OrganizationBase(BaseModel):
+    legal_name: str
+    display_name: str
+    pan: str
+    gstin: Optional[str] = None
+    address: Optional[dict] = None
+    logo_url: Optional[str] = None
+    settings: Optional[dict] = None
+    is_active: bool = True
+
+
+class OrganizationCreate(OrganizationBase):
+    pass
+
+
+class OrganizationUpdate(BaseModel):
+    legal_name: Optional[str] = None
+    display_name: Optional[str] = None
+    pan: Optional[str] = None
+    gstin: Optional[str] = None
+    address: Optional[dict] = None
+    logo_url: Optional[str] = None
+    settings: Optional[dict] = None
+    is_active: Optional[bool] = None
+
+
+class OrganizationResponse(OrganizationBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Financial Year Schemas
+class FinancialYearBase(BaseModel):
+    organization_id: int
+    year_code: str  # e.g., "2023-24"
+    start_date: datetime
+    end_date: datetime
+    assessment_year: str  # e.g., "2024-25"
+    is_active: bool = False
+    is_closed: bool = False
+    opening_balances: Optional[dict] = None
+
+
+class FinancialYearCreate(FinancialYearBase):
+    pass
+
+
+class FinancialYearUpdate(BaseModel):
+    year_code: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    assessment_year: Optional[str] = None
+    is_active: Optional[bool] = None
+    is_closed: Optional[bool] = None
+    opening_balances: Optional[dict] = None
+
+
+class FinancialYearResponse(FinancialYearBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Commodity Master Schemas
+class CommodityBase(BaseModel):
+    commodity_code: str
+    commodity_name: str
+    commodity_type: str  # e.g., 'Cotton', 'Wheat', 'Rice'
+    variety: Optional[str] = None
+    grade: Optional[str] = None
+    hsn_code: Optional[str] = None
+    uom: str = 'BALES'  # Unit of measurement
+    description: Optional[str] = None
+    quality_parameters: Optional[dict] = None  # length, mic, rd, etc.
+    is_active: bool = True
+    metadata_json: Optional[dict] = None
+
+
+class CommodityCreate(CommodityBase):
+    pass
+
+
+class CommodityUpdate(BaseModel):
+    commodity_code: Optional[str] = None
+    commodity_name: Optional[str] = None
+    commodity_type: Optional[str] = None
+    variety: Optional[str] = None
+    grade: Optional[str] = None
+    hsn_code: Optional[str] = None
+    uom: Optional[str] = None
+    description: Optional[str] = None
+    quality_parameters: Optional[dict] = None
+    is_active: Optional[bool] = None
+    metadata_json: Optional[dict] = None
+
+
+class CommodityResponse(CommodityBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Location Master Schemas
+class LocationBase(BaseModel):
+    country: str
+    state: str
+    city: str
+
+
+class LocationCreate(LocationBase):
+    pass
+
+
+class LocationUpdate(BaseModel):
+    country: Optional[str] = None
+    state: Optional[str] = None
+    city: Optional[str] = None
+
+
+class LocationResponse(LocationBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# GST Rate Schemas
+class GstRateBase(BaseModel):
+    rate: float
+    description: str
+    hsn_code: str
+
+
+class GstRateCreate(GstRateBase):
+    pass
+
+
+class GstRateUpdate(BaseModel):
+    rate: Optional[float] = None
+    description: Optional[str] = None
+    hsn_code: Optional[str] = None
+
+
+class GstRateResponse(GstRateBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Commission Structure Schemas
+class CommissionStructureBase(BaseModel):
+    name: str
+    type: str  # 'PERCENTAGE' or 'PER_BALE'
+    value: float
+
+
+class CommissionStructureCreate(CommissionStructureBase):
+    pass
+
+
+class CommissionStructureUpdate(BaseModel):
+    name: Optional[str] = None
+    type: Optional[str] = None
+    value: Optional[float] = None
+
+
+class CommissionStructureResponse(CommissionStructureBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Setting Schemas
+class SettingBase(BaseModel):
+    category: str
+    key: str
+    value: str
+    value_type: str = 'string'  # string, number, boolean, json
+    description: Optional[str] = None
+    is_public: bool = False
+    is_editable: bool = True
+
+
+class SettingCreate(SettingBase):
+    pass
+
+
+class SettingUpdate(BaseModel):
+    category: Optional[str] = None
+    value: Optional[str] = None
+    value_type: Optional[str] = None
+    description: Optional[str] = None
+    is_public: Optional[bool] = None
+    is_editable: Optional[bool] = None
+
+
+class SettingResponse(SettingBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Generic Master Data Schemas
+class MasterDataBase(BaseModel):
+    category: str
+    name: str
+    code: Optional[str] = None
+    description: Optional[str] = None
+    is_active: bool = True
+    metadata_json: Optional[dict] = None
+
+
+class MasterDataCreate(MasterDataBase):
+    pass
+
+
+class MasterDataUpdate(BaseModel):
+    category: Optional[str] = None
+    name: Optional[str] = None
+    code: Optional[str] = None
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
+    metadata_json: Optional[dict] = None
+
+
+class MasterDataResponse(MasterDataBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True

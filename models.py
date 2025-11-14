@@ -386,6 +386,25 @@ class MasterDataItem(Base, TimestampMixin):
     metadata_json = Column(JSON)  # Additional flexible data
 
 
+class Commodity(Base, TimestampMixin):
+    """Dedicated Commodity Master table for product/variety management."""
+
+    __tablename__ = "commodities"
+
+    id = Column(Integer, primary_key=True, index=True)
+    commodity_code = Column(String(50), unique=True, nullable=False, index=True)
+    commodity_name = Column(String(255), nullable=False, index=True)
+    commodity_type = Column(String(100), nullable=False)  # e.g., 'Cotton', 'Wheat', 'Rice'
+    variety = Column(String(255))  # Specific variety within commodity type
+    grade = Column(String(100))  # Quality grade
+    hsn_code = Column(String(50), index=True)  # HSN code for taxation
+    uom = Column(String(50), default='BALES')  # Unit of measurement (BALES, KG, QUINTAL, MT)
+    description = Column(Text)
+    quality_parameters = Column(JSON)  # Store quality specs like length, mic, rd, etc.
+    is_active = Column(Boolean, default=True, index=True)
+    metadata_json = Column(JSON)  # Additional flexible data (renamed from 'metadata' to avoid conflict)
+
+
 class StructuredTerm(Base, TimestampMixin):
     """Structured terms for payments, delivery, etc."""
 

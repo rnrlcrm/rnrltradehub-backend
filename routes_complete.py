@@ -20,7 +20,7 @@ from crud_helpers import get_entity_by_id, check_entity_exists, hard_delete_enti
 logger = logging.getLogger(__name__)
 
 
-# Create routers for all entities
+# Create routers for core business entities
 business_partner_router = APIRouter(prefix="/api/business-partners", tags=["Business Partners"])
 sales_contract_router = APIRouter(prefix="/api/sales-contracts", tags=["Sales Contracts"])
 cci_term_router = APIRouter(prefix="/api/cci-terms", tags=["CCI Terms"])
@@ -30,11 +30,10 @@ payment_router = APIRouter(prefix="/api/payments", tags=["Payments"])
 dispute_router = APIRouter(prefix="/api/disputes", tags=["Disputes"])
 commission_router = APIRouter(prefix="/api/commissions", tags=["Commissions"])
 role_router = APIRouter(prefix="/api/roles", tags=["Roles & Permissions"])
-setting_router = APIRouter(prefix="/api/settings", tags=["Settings"])
-master_data_router = APIRouter(prefix="/api/master-data", tags=["Master Data"])
-gst_rate_router = APIRouter(prefix="/api/gst-rates", tags=["GST Rates"])
-location_router = APIRouter(prefix="/api/locations", tags=["Locations"])
-commission_structure_router = APIRouter(prefix="/api/commission-structures", tags=["Commission Structures"])
+settings_users_router = APIRouter(prefix="/api/settings", tags=["Settings - Users"])  # For Settings/Users management
+
+# NOTE: Master data routers (Organization, Financial Year, Commodity, Location, GST, 
+# Commission Structure, Settings) have been moved to routes_masters.py
 
 
 # ========== Business Partner Endpoints ==========
@@ -613,7 +612,7 @@ def get_role(role_id: int, db: Session = Depends(get_db)):
 # to ensure FastAPI matches them correctly
 
 # ========== Settings/Users Endpoints ==========
-@setting_router.get("/users", response_model=List[schemas.SettingsUserResponse])
+@settings_users_router.get("/users", response_model=List[schemas.SettingsUserResponse])
 def list_settings_users(
     userType: Optional[str] = Query(None, alias="userType"),
     isActive: Optional[bool] = Query(None, alias="isActive"),
@@ -669,7 +668,7 @@ def list_settings_users(
         )
 
 
-@setting_router.post("/users", response_model=schemas.SettingsUserResponse, status_code=status.HTTP_201_CREATED)
+@settings_users_router.post("/users", response_model=schemas.SettingsUserResponse, status_code=status.HTTP_201_CREATED)
 def create_settings_user(
     user_data: schemas.SettingsUserCreate,
     db: Session = Depends(get_db)
@@ -751,7 +750,7 @@ def create_settings_user(
     }
 
 
-@setting_router.put("/users/{user_id}", response_model=schemas.SettingsUserResponse)
+@settings_users_router.put("/users/{user_id}", response_model=schemas.SettingsUserResponse)
 def update_settings_user(
     user_id: int,
     user_data: schemas.SettingsUserUpdate,
@@ -825,7 +824,7 @@ def update_settings_user(
     }
 
 
-@setting_router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+@settings_users_router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_settings_user(
     user_id: int,
     db: Session = Depends(get_db)
@@ -852,7 +851,7 @@ def delete_settings_user(
 # ========== General Settings Endpoints ==========
 # NOTE: These generic routes must come AFTER specific routes like /users
 
-@setting_router.post("/", status_code=status.HTTP_201_CREATED)
+@settings_users_router.post("/", status_code=status.HTTP_201_CREATED)
 def create_setting(setting_data: dict, db: Session = Depends(get_db)):
     """Create a new setting."""
     db_setting = models.Setting(**setting_data)
@@ -862,7 +861,7 @@ def create_setting(setting_data: dict, db: Session = Depends(get_db)):
     return db_setting
 
 
-@setting_router.get("/")
+@settings_users_router.get("/")
 def list_settings(
     category: Optional[str] = None,
     skip: int = 0,
@@ -876,7 +875,7 @@ def list_settings(
     return query.offset(skip).limit(limit).all()
 
 
-@setting_router.get("/{key}")
+@settings_users_router.get("/{key}")
 def get_setting(key: str, db: Session = Depends(get_db)):
     """Get a specific setting by key."""
     setting = db.query(models.Setting).filter(models.Setting.key == key).first()
@@ -885,7 +884,7 @@ def get_setting(key: str, db: Session = Depends(get_db)):
     return setting
 
 
-@setting_router.put("/{key}")
+@settings_users_router.put("/{key}")
 def update_setting(key: str, setting_data: dict, db: Session = Depends(get_db)):
     """Update a setting."""
     db_setting = db.query(models.Setting).filter(models.Setting.key == key).first()
@@ -903,80 +902,8 @@ def update_setting(key: str, setting_data: dict, db: Session = Depends(get_db)):
     return db_setting
 
 
-# ========== Master Data Endpoints ==========
-@master_data_router.post("/", status_code=status.HTTP_201_CREATED)
-def create_master_data(data: dict, db: Session = Depends(get_db)):
-    """Create a new master data item."""
-    db_item = models.MasterDataItem(**data)
-    db.add(db_item)
-    db.commit()
-    db.refresh(db_item)
-    return db_item
-
-
-@master_data_router.get("/")
-def list_master_data(
-    category: Optional[str] = None,
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db)
-):
-    """List master data items."""
-    query = db.query(models.MasterDataItem)
-    if category:
-        query = query.filter(models.MasterDataItem.category == category)
-    return query.filter(models.MasterDataItem.is_active == True).offset(skip).limit(limit).all()
-
-
-# ========== GST Rate Endpoints ==========
-@gst_rate_router.post("/", status_code=status.HTTP_201_CREATED)
-def create_gst_rate(gst_data: dict, db: Session = Depends(get_db)):
-    """Create a new GST rate."""
-    db_gst = models.GstRate(**gst_data)
-    db.add(db_gst)
-    db.commit()
-    db.refresh(db_gst)
-    return db_gst
-
-
-@gst_rate_router.get("/")
-def list_gst_rates(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    """List all GST rates."""
-    return db.query(models.GstRate).offset(skip).limit(limit).all()
-
-
-# ========== Location Endpoints ==========
-@location_router.post("/", status_code=status.HTTP_201_CREATED)
-def create_location(location_data: dict, db: Session = Depends(get_db)):
-    """Create a new location."""
-    db_location = models.Location(**location_data)
-    db.add(db_location)
-    db.commit()
-    db.refresh(db_location)
-    return db_location
-
-
-@location_router.get("/")
-def list_locations(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    """List all locations."""
-    return db.query(models.Location).offset(skip).limit(limit).all()
-
-
-# ========== Commission Structure Endpoints ==========
-@commission_structure_router.post("/", status_code=status.HTTP_201_CREATED)
-def create_commission_structure(data: dict, db: Session = Depends(get_db)):
-    """Create a new commission structure."""
-    db_structure = models.CommissionStructure(**data)
-    db.add(db_structure)
-    db.commit()
-    db.refresh(db_structure)
-    return db_structure
-
-
-@commission_structure_router.get("/")
-def list_commission_structures(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    """List all commission structures."""
-    return db.query(models.CommissionStructure).offset(skip).limit(limit).all()
+# NOTE: Generic master data endpoints (Master Data, GST Rates, Locations, 
+# Commission Structures) have been moved to routes_masters.py
 
 
 # ========== Document/File Storage Endpoints ==========
