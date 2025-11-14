@@ -35,11 +35,7 @@ from routes_complete import (
     dispute_router,
     commission_router,
     role_router,
-    setting_router,
-    master_data_router,
-    gst_rate_router,
-    location_router,
-    commission_structure_router,
+    settings_users_router,
     document_router,
     email_template_router,
     email_log_router,
@@ -50,12 +46,24 @@ from routes_complete import (
     security_event_router,
     sys_config_router
 )
+from routes_masters import (
+    organization_router,
+    financial_year_router,
+    commodity_router,
+    location_router,
+    gst_rate_router,
+    commission_structure_router,
+    setting_router,
+    master_data_router
+)
 from routes_export import export_router
 from routes_auth import auth_router, team_router
 from routes_onboarding import router as onboarding_router
 from routes_amendments import router as amendment_router
 from routes_kyc import router as kyc_router
 from routes_scheduler import router as scheduler_router
+from routes_tradedesk import router as tradedesk_router
+from routes_websocket import router as websocket_router
 
 # Configure logging
 logging.basicConfig(
@@ -180,11 +188,17 @@ app.include_router(payment_router)
 app.include_router(dispute_router)
 app.include_router(commission_router)
 app.include_router(role_router)
+app.include_router(settings_users_router)
+
+# Master Data Routers (from routes_masters.py)
+app.include_router(organization_router)
+app.include_router(financial_year_router)
+app.include_router(commodity_router)
+app.include_router(location_router)
+app.include_router(gst_rate_router)
+app.include_router(commission_structure_router)
 app.include_router(setting_router)
 app.include_router(master_data_router)
-app.include_router(gst_rate_router)
-app.include_router(location_router)
-app.include_router(commission_structure_router)
 
 # File Storage & Documents
 app.include_router(document_router)
@@ -217,6 +231,8 @@ app.include_router(onboarding_router)
 app.include_router(amendment_router)
 app.include_router(kyc_router)
 app.include_router(scheduler_router)
+app.include_router(tradedesk_router)  # Trade Desk Module - NEW
+app.include_router(websocket_router)  # WebSocket Real-time Communication - NEW
 
 
 @app.get("/")
