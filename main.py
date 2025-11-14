@@ -63,6 +63,7 @@ from routes_amendments import router as amendment_router
 from routes_kyc import router as kyc_router
 from routes_scheduler import router as scheduler_router
 from routes_tradedesk import router as tradedesk_router
+from routes_websocket import router as websocket_router
 
 # Configure logging
 logging.basicConfig(
@@ -231,6 +232,7 @@ app.include_router(amendment_router)
 app.include_router(kyc_router)
 app.include_router(scheduler_router)
 app.include_router(tradedesk_router)  # Trade Desk Module - NEW
+app.include_router(websocket_router)  # WebSocket Real-time Communication - NEW
 
 
 @app.get("/")
