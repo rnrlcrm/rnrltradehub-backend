@@ -651,3 +651,356 @@ class SettingsUserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ============================================================================
+# NEW SCHEMAS - Added for complete backend implementation
+# ============================================================================
+
+
+# ===== Session Management =====
+
+class SessionBase(BaseModel):
+    user_id: str
+    refresh_token: str
+    start_time: datetime
+    last_activity: datetime
+    expires_at: datetime
+    is_active: bool = True
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+
+
+class SessionCreate(SessionBase):
+    id: str
+
+
+class SessionResponse(SessionBase):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ===== Password Reset =====
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetVerify(BaseModel):
+    token: str
+    new_password: str
+
+
+class PasswordResetTokenCreate(BaseModel):
+    id: str
+    user_id: str
+    token: str
+    expires_at: datetime
+
+
+class PasswordResetTokenResponse(BaseModel):
+    id: str
+    user_id: str
+    expires_at: datetime
+    used_at: Optional[datetime]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ===== Partner Certification =====
+
+class PartnerCertificationBase(BaseModel):
+    partner_id: str
+    certification_type: str
+    certification_name: str
+    certification_body: str
+    certificate_number: Optional[str] = None
+    products_scope: Optional[List[str]] = None
+    issue_date: datetime
+    expiry_date: datetime
+    document_url: Optional[str] = None
+    is_visible_in_trade: bool = True
+
+
+class PartnerCertificationCreate(PartnerCertificationBase):
+    id: str
+
+
+class PartnerCertificationUpdate(BaseModel):
+    certification_name: Optional[str] = None
+    certification_body: Optional[str] = None
+    certificate_number: Optional[str] = None
+    products_scope: Optional[List[str]] = None
+    expiry_date: Optional[datetime] = None
+    document_url: Optional[str] = None
+    is_visible_in_trade: Optional[bool] = None
+
+
+class PartnerCertificationResponse(PartnerCertificationBase):
+    id: str
+    status: str  # PENDING, VERIFIED, EXPIRED, REJECTED
+    verified_by: Optional[str] = None
+    verified_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ===== Partner Verification (OTP) =====
+
+class PartnerVerificationCreate(BaseModel):
+    id: str
+    partner_id: str
+    verification_type: str  # EMAIL or MOBILE
+    value: str  # Email or phone
+    otp: str
+    expires_at: datetime
+
+
+class PartnerVerificationVerify(BaseModel):
+    partner_id: str
+    verification_type: str
+    otp: str
+
+
+class PartnerVerificationResponse(BaseModel):
+    id: str
+    partner_id: str
+    verification_type: str
+    value: str
+    attempts: int
+    verified_at: Optional[datetime]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ===== Approval Workflow =====
+
+class ApprovalWorkflowBase(BaseModel):
+    request_type: str  # USER_CREATION, USER_MODIFICATION, ROLE_ASSIGNMENT, PARTNER_APPROVAL
+    requester_name: str
+    target_user_email: str
+    details: Dict[str, Any]
+
+
+class ApprovalWorkflowCreate(ApprovalWorkflowBase):
+    id: str
+    requester_id: Optional[str] = None
+    target_user_id: Optional[str] = None
+
+
+class ApprovalWorkflowApprove(BaseModel):
+    approved_by: str
+
+
+class ApprovalWorkflowReject(BaseModel):
+    approved_by: str
+    rejection_reason: str
+
+
+class ApprovalWorkflowResponse(ApprovalWorkflowBase):
+    id: str
+    requester_id: Optional[str]
+    target_user_id: Optional[str]
+    status: str  # PENDING, APPROVED, REJECTED
+    approved_by: Optional[str]
+    approved_at: Optional[datetime]
+    rejection_reason: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ===== Sub-User Invite =====
+
+class SubUserInviteBase(BaseModel):
+    email: EmailStr
+    name: str
+    branch_ids: List[str]
+    permissions: Dict[str, List[str]]
+
+
+class SubUserInviteCreate(SubUserInviteBase):
+    id: str
+    parent_user_id: str
+    invite_token: str
+    expires_at: datetime
+
+
+class SubUserInviteResponse(SubUserInviteBase):
+    id: str
+    parent_user_id: str
+    status: str  # PENDING, ACCEPTED, EXPIRED, CANCELLED
+    invite_token: str
+    expires_at: datetime
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ===== Trade Desk Module =====
+
+class TradeBase(BaseModel):
+    buyer_id: str
+    commodity_id: int
+    quantity: float
+    unit: str
+    price_range_min: Optional[float] = None
+    price_range_max: Optional[float] = None
+    delivery_location_id: Optional[int] = None
+    delivery_date: Optional[datetime] = None
+    quality_parameters: Optional[Dict[str, Any]] = None
+    parsed_from_text: Optional[str] = None
+
+
+class TradeCreate(TradeBase):
+    trade_number: str
+    created_by: str
+
+
+class TradeUpdate(BaseModel):
+    quantity: Optional[float] = None
+    price_range_min: Optional[float] = None
+    price_range_max: Optional[float] = None
+    delivery_date: Optional[datetime] = None
+    quality_parameters: Optional[Dict[str, Any]] = None
+    status: Optional[str] = None
+
+
+class TradeResponse(TradeBase):
+    id: str
+    trade_number: str
+    status: str  # OPEN, MATCHED, PARTIAL, CLOSED, CANCELLED
+    created_by: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class OfferBase(BaseModel):
+    trade_id: str
+    seller_id: str
+    quantity: float
+    unit: str
+    price: float
+    delivery_location_id: Optional[int] = None
+    delivery_date: Optional[datetime] = None
+    quality_specs: Optional[Dict[str, Any]] = None
+    tested_lot_id: Optional[str] = None
+
+
+class OfferCreate(OfferBase):
+    offer_number: str
+    created_by: str
+
+
+class OfferUpdate(BaseModel):
+    price: Optional[float] = None
+    quantity: Optional[float] = None
+    delivery_date: Optional[datetime] = None
+    quality_specs: Optional[Dict[str, Any]] = None
+    status: Optional[str] = None
+
+
+class OfferResponse(OfferBase):
+    id: str
+    offer_number: str
+    matching_score: Optional[float]
+    status: str  # PENDING, ACCEPTED, REJECTED, NEGOTIATING, EXPIRED
+    created_by: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class TestedLotBase(BaseModel):
+    seller_id: str
+    commodity_id: int
+    quantity: float
+    unit: str
+    quality_parameters: Dict[str, Any]
+    storage_location_id: Optional[int] = None
+    available_from: datetime
+    available_until: Optional[datetime] = None
+    test_report_url: Optional[str] = None
+
+
+class TestedLotCreate(TestedLotBase):
+    lot_number: str
+    created_by: str
+
+
+class TestedLotUpdate(BaseModel):
+    quantity: Optional[float] = None
+    quality_parameters: Optional[Dict[str, Any]] = None
+    available_until: Optional[datetime] = None
+    status: Optional[str] = None
+
+
+class TestedLotResponse(TestedLotBase):
+    id: str
+    lot_number: str
+    status: str  # AVAILABLE, RESERVED, SOLD, EXPIRED
+    created_by: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class NegotiationBase(BaseModel):
+    offer_id: str
+    counter_price: Optional[float] = None
+    counter_quantity: Optional[float] = None
+    counter_delivery_date: Optional[datetime] = None
+    message: Optional[str] = None
+
+
+class NegotiationCreate(NegotiationBase):
+    initiated_by: str
+
+
+class NegotiationResponse(NegotiationBase):
+    id: str
+    initiated_by: str
+    status: str  # PENDING, ACCEPTED, REJECTED, COUNTERED
+    responded_by: Optional[str]
+    responded_at: Optional[datetime]
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ===== NLP Trade Parsing =====
+
+class TradeParseRequest(BaseModel):
+    text: str  # Natural language trade description
+    user_id: str
+
+
+class TradeParseResponse(BaseModel):
+    parsed_trade: TradeBase
+    confidence: float
+    suggestions: List[str]
+
