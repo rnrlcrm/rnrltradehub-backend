@@ -917,3 +917,710 @@ class SubUserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ============================================================================
+# TRADE DESK & CHATBOT SCHEMAS
+# ============================================================================
+
+class ChatSessionBase(BaseModel):
+    session_type: str
+    context_data: Optional[dict] = None
+
+
+class ChatSessionCreate(ChatSessionBase):
+    user_id: int
+    organization_id: int
+
+
+class ChatSessionResponse(ChatSessionBase):
+    id: str
+    user_id: int
+    organization_id: int
+    status: str
+    started_at: datetime
+    completed_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ChatMessageBase(BaseModel):
+    message_type: str
+    content: str
+    metadata_json: Optional[dict] = None
+
+
+class ChatMessageCreate(ChatMessageBase):
+    session_id: str
+
+
+class ChatMessageResponse(ChatMessageBase):
+    id: str
+    session_id: str
+    timestamp: datetime
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class TradeBase(BaseModel):
+    trade_date: datetime
+    commodity_id: int
+    client_id: str
+    vendor_id: str
+    agent_id: Optional[str] = None
+    quantity_bales: int
+    quantity_kg: Optional[float] = None
+    rate_per_unit: float
+    unit: str
+    location: str
+    delivery_terms: str
+    payment_terms: str
+    quality_terms: Optional[dict] = None
+
+
+class TradeCreate(TradeBase):
+    organization_id: int
+    financial_year: str
+    source: str
+    session_id: Optional[str] = None
+    created_by: int
+
+
+class TradeUpdate(BaseModel):
+    trade_date: Optional[datetime] = None
+    quantity_bales: Optional[int] = None
+    quantity_kg: Optional[float] = None
+    rate_per_unit: Optional[float] = None
+    location: Optional[str] = None
+    delivery_terms: Optional[str] = None
+    payment_terms: Optional[str] = None
+    quality_terms: Optional[dict] = None
+    amendment_reason: Optional[str] = None
+
+
+class TradeResponse(TradeBase):
+    id: str
+    trade_number: str
+    organization_id: int
+    financial_year: str
+    source: str
+    session_id: Optional[str] = None
+    created_by: int
+    status: str
+    contract_id: Optional[str] = None
+    converted_at: Optional[datetime] = None
+    version: int
+    amendment_reason: Optional[str] = None
+    cancelled_reason: Optional[str] = None
+    cancelled_by: Optional[int] = None
+    cancelled_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ============================================================================
+# QUALITY INSPECTION SCHEMAS
+# ============================================================================
+
+class QualityInspectionBase(BaseModel):
+    inspection_date: datetime
+    inspection_location: str
+    parameters: dict
+    remarks: Optional[str] = None
+
+
+class QualityInspectionCreate(QualityInspectionBase):
+    organization_id: int
+    financial_year: str
+    contract_id: str
+    lot_number: Optional[str] = None
+    inspector_id: int
+
+
+class QualityInspectionUpdate(BaseModel):
+    inspection_date: Optional[datetime] = None
+    inspection_location: Optional[str] = None
+    parameters: Optional[dict] = None
+    status: Optional[str] = None
+    result: Optional[str] = None
+    remarks: Optional[str] = None
+    rejection_reason: Optional[str] = None
+
+
+class QualityInspectionApproval(BaseModel):
+    approved: bool
+    rejection_reason: Optional[str] = None
+
+
+class QualityInspectionResponse(QualityInspectionBase):
+    id: str
+    inspection_number: str
+    organization_id: int
+    financial_year: str
+    contract_id: str
+    lot_number: Optional[str] = None
+    inspector_id: int
+    status: str
+    result: Optional[str] = None
+    approved_by: Optional[int] = None
+    approved_at: Optional[datetime] = None
+    rejection_reason: Optional[str] = None
+    report_document_id: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class InspectionEventCreate(BaseModel):
+    inspection_id: str
+    event_type: str
+    performed_by: int
+    event_data: Optional[dict] = None
+    notes: Optional[str] = None
+
+
+class InspectionEventResponse(BaseModel):
+    id: str
+    inspection_id: str
+    event_type: str
+    performed_by: int
+    event_data: Optional[dict] = None
+    notes: Optional[str] = None
+    event_timestamp: datetime
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class InventoryBase(BaseModel):
+    commodity_id: int
+    lot_number: str
+    warehouse_location: str
+    storage_zone: Optional[str] = None
+    quantity_bales: int
+    quantity_kg: float
+    unit_weight_kg: Optional[float] = None
+    quality_grade: Optional[str] = None
+
+
+class InventoryCreate(InventoryBase):
+    organization_id: int
+    financial_year: str
+    contract_id: Optional[str] = None
+    inspection_id: Optional[str] = None
+
+
+class InventoryUpdate(BaseModel):
+    warehouse_location: Optional[str] = None
+    storage_zone: Optional[str] = None
+    quantity_bales: Optional[int] = None
+    quantity_kg: Optional[float] = None
+    status: Optional[str] = None
+    quality_grade: Optional[str] = None
+    metadata_json: Optional[dict] = None
+
+
+class InventoryResponse(InventoryBase):
+    id: str
+    organization_id: int
+    financial_year: str
+    contract_id: Optional[str] = None
+    status: str
+    inspection_id: Optional[str] = None
+    received_date: Optional[datetime] = None
+    dispatch_date: Optional[datetime] = None
+    last_movement_date: Optional[datetime] = None
+    metadata_json: Optional[dict] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ============================================================================
+# LOGISTICS & DELIVERY SCHEMAS
+# ============================================================================
+
+class TransporterBase(BaseModel):
+    name: str
+    contact_person: str
+    contact_phone: str
+    contact_email: Optional[str] = None
+    address: str
+    city: Optional[str] = None
+    state: Optional[str] = None
+    pincode: Optional[str] = None
+    pan: Optional[str] = None
+    gstin: Optional[str] = None
+
+
+class TransporterCreate(TransporterBase):
+    organization_id: int
+
+
+class TransporterUpdate(BaseModel):
+    name: Optional[str] = None
+    contact_person: Optional[str] = None
+    contact_phone: Optional[str] = None
+    contact_email: Optional[str] = None
+    address: Optional[str] = None
+    status: Optional[str] = None
+    rating: Optional[float] = None
+    notes: Optional[str] = None
+
+
+class TransporterResponse(TransporterBase):
+    id: str
+    transporter_code: str
+    organization_id: int
+    status: str
+    rating: Optional[float] = None
+    notes: Optional[str] = None
+    metadata_json: Optional[dict] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class DeliveryOrderBase(BaseModel):
+    delivery_date: datetime
+    quantity_bales: int
+    quantity_kg: float
+    pickup_location: str
+    delivery_location: str
+    vehicle_number: Optional[str] = None
+    driver_name: Optional[str] = None
+    driver_phone: Optional[str] = None
+
+
+class DeliveryOrderCreate(DeliveryOrderBase):
+    organization_id: int
+    financial_year: str
+    contract_id: str
+    invoice_id: Optional[str] = None
+    transporter_id: Optional[str] = None
+
+
+class DeliveryOrderUpdate(BaseModel):
+    delivery_date: Optional[datetime] = None
+    planned_delivery_date: Optional[datetime] = None
+    actual_delivery_date: Optional[datetime] = None
+    transporter_id: Optional[str] = None
+    vehicle_number: Optional[str] = None
+    driver_name: Optional[str] = None
+    driver_phone: Optional[str] = None
+    status: Optional[str] = None
+    lr_number: Optional[str] = None
+    eway_bill_number: Optional[str] = None
+    remarks: Optional[str] = None
+    cancellation_reason: Optional[str] = None
+
+
+class DeliveryOrderResponse(DeliveryOrderBase):
+    id: str
+    do_number: str
+    organization_id: int
+    financial_year: str
+    contract_id: str
+    invoice_id: Optional[str] = None
+    planned_delivery_date: Optional[datetime] = None
+    actual_delivery_date: Optional[datetime] = None
+    transporter_id: Optional[str] = None
+    status: str
+    lr_number: Optional[str] = None
+    eway_bill_number: Optional[str] = None
+    remarks: Optional[str] = None
+    cancellation_reason: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class DeliveryEventCreate(BaseModel):
+    delivery_order_id: str
+    event_type: str
+    performed_by: int
+    event_data: Optional[dict] = None
+    notes: Optional[str] = None
+    location: Optional[str] = None
+
+
+class DeliveryEventResponse(BaseModel):
+    id: str
+    delivery_order_id: str
+    event_type: str
+    performed_by: int
+    event_data: Optional[dict] = None
+    notes: Optional[str] = None
+    event_timestamp: datetime
+    location: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ============================================================================
+# ACCOUNTING & LEDGER SCHEMAS
+# ============================================================================
+
+class ChartOfAccountsBase(BaseModel):
+    account_name: str
+    account_type: str
+    account_subtype: Optional[str] = None
+    description: Optional[str] = None
+
+
+class ChartOfAccountsCreate(ChartOfAccountsBase):
+    organization_id: int
+    parent_account_id: Optional[str] = None
+
+
+class ChartOfAccountsResponse(ChartOfAccountsBase):
+    id: str
+    account_code: str
+    organization_id: int
+    parent_account_id: Optional[str] = None
+    level: int
+    is_active: bool
+    is_system_account: bool
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class LedgerEntryBase(BaseModel):
+    transaction_date: datetime
+    transaction_type: str
+    source_type: str
+    source_id: str
+    account_id: str
+    entry_type: str
+    amount: float
+    narration: str
+    party_type: Optional[str] = None
+    party_id: Optional[str] = None
+
+
+class LedgerEntryCreate(LedgerEntryBase):
+    organization_id: int
+    financial_year: str
+    voucher_id: Optional[str] = None
+
+
+class LedgerEntryResponse(LedgerEntryBase):
+    id: str
+    entry_number: str
+    organization_id: int
+    financial_year: str
+    voucher_id: Optional[str] = None
+    status: str
+    posted_by: Optional[int] = None
+    posted_at: Optional[datetime] = None
+    reversed_by: Optional[int] = None
+    reversed_at: Optional[datetime] = None
+    reversal_reason: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class VoucherBase(BaseModel):
+    voucher_type: str
+    voucher_date: datetime
+    narration: str
+    reference_number: Optional[str] = None
+    reference_date: Optional[datetime] = None
+
+
+class VoucherCreate(VoucherBase):
+    organization_id: int
+    financial_year: str
+    created_by: int
+
+
+class VoucherUpdate(BaseModel):
+    narration: Optional[str] = None
+    reference_number: Optional[str] = None
+    reference_date: Optional[datetime] = None
+
+
+class VoucherPost(BaseModel):
+    debit_total: float
+    credit_total: float
+
+
+class VoucherResponse(VoucherBase):
+    id: str
+    voucher_number: str
+    organization_id: int
+    financial_year: str
+    status: str
+    debit_total: float
+    credit_total: float
+    created_by: int
+    posted_by: Optional[int] = None
+    posted_at: Optional[datetime] = None
+    approved_by: Optional[int] = None
+    approved_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ReconciliationCreate(BaseModel):
+    organization_id: int
+    financial_year: str
+    reconciliation_date: datetime
+    account_id: str
+    book_balance: float
+    bank_balance: float
+    difference: float
+    reconciled_items: Optional[dict] = None
+    unmatched_items: Optional[dict] = None
+    notes: Optional[str] = None
+    performed_by: int
+
+
+class ReconciliationResponse(BaseModel):
+    id: str
+    organization_id: int
+    financial_year: str
+    reconciliation_date: datetime
+    account_id: str
+    book_balance: float
+    bank_balance: float
+    difference: float
+    status: str
+    reconciled_items: Optional[dict] = None
+    unmatched_items: Optional[dict] = None
+    notes: Optional[str] = None
+    performed_by: int
+    reviewed_by: Optional[int] = None
+    reviewed_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ============================================================================
+# ENHANCED DISPUTE SCHEMAS
+# ============================================================================
+
+class DisputeCommentBase(BaseModel):
+    comment_text: str
+    comment_type: str = 'COMMENT'
+    attachments: Optional[dict] = None
+    is_internal: bool = False
+
+
+class DisputeCommentCreate(DisputeCommentBase):
+    dispute_id: str
+    user_id: int
+    parent_comment_id: Optional[str] = None
+
+
+class DisputeCommentResponse(DisputeCommentBase):
+    id: str
+    dispute_id: str
+    user_id: int
+    parent_comment_id: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class DisputeEvidenceCreate(BaseModel):
+    dispute_id: str
+    document_id: str
+    evidence_type: str
+    uploaded_by: int
+    description: Optional[str] = None
+
+
+class DisputeEvidenceResponse(BaseModel):
+    id: str
+    dispute_id: str
+    document_id: str
+    evidence_type: str
+    uploaded_by: int
+    description: Optional[str] = None
+    is_verified: bool
+    verified_by: Optional[int] = None
+    verified_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ============================================================================
+# REPORTING & NOTIFICATION SCHEMAS
+# ============================================================================
+
+class ReportDefinitionBase(BaseModel):
+    report_name: str
+    category: str
+    description: Optional[str] = None
+    query_template: Optional[str] = None
+    parameters_schema: Optional[dict] = None
+    supported_formats: Optional[dict] = None
+
+
+class ReportDefinitionCreate(ReportDefinitionBase):
+    required_permission: Optional[str] = None
+    is_public: bool = False
+
+
+class ReportDefinitionResponse(ReportDefinitionBase):
+    id: str
+    report_code: str
+    required_permission: Optional[str] = None
+    is_public: bool
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ReportExecutionCreate(BaseModel):
+    report_definition_id: str
+    organization_id: int
+    requested_by: int
+    parameters: Optional[dict] = None
+    output_format: str = 'PDF'
+
+
+class ReportExecutionResponse(BaseModel):
+    id: str
+    report_definition_id: str
+    organization_id: int
+    requested_by: int
+    requested_at: datetime
+    parameters: Optional[dict] = None
+    status: str
+    output_format: Optional[str] = None
+    file_size: Optional[int] = None
+    storage_path: Optional[str] = None
+    download_url: Optional[str] = None
+    url_expires_at: Optional[datetime] = None
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    error_message: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class NotificationQueueCreate(BaseModel):
+    organization_id: int
+    notification_type: str
+    recipient_type: str
+    recipient_id: str
+    subject: Optional[str] = None
+    message: str
+    template_id: Optional[int] = None
+    template_data: Optional[dict] = None
+    priority: str = 'NORMAL'
+    scheduled_for: Optional[datetime] = None
+    created_by_user: Optional[int] = None
+    source_entity_type: Optional[str] = None
+    source_entity_id: Optional[str] = None
+
+
+class NotificationQueueResponse(BaseModel):
+    id: str
+    organization_id: int
+    notification_type: str
+    recipient_type: str
+    recipient_id: str
+    subject: Optional[str] = None
+    message: str
+    template_id: Optional[int] = None
+    template_data: Optional[dict] = None
+    priority: str
+    scheduled_for: Optional[datetime] = None
+    status: str
+    sent_at: Optional[datetime] = None
+    delivery_status: Optional[str] = None
+    error_message: Optional[str] = None
+    retry_count: int
+    max_retries: int
+    created_by_user: Optional[int] = None
+    source_entity_type: Optional[str] = None
+    source_entity_id: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class BackupLogCreate(BaseModel):
+    organization_id: Optional[int] = None
+    backup_type: str
+    entities_included: Optional[dict] = None
+    date_range_start: Optional[datetime] = None
+    date_range_end: Optional[datetime] = None
+    storage_location: str
+    triggered_by: Optional[int] = None
+    trigger_type: str = 'MANUAL'
+
+
+class BackupLogResponse(BaseModel):
+    id: str
+    organization_id: Optional[int] = None
+    backup_type: str
+    backup_date: datetime
+    entities_included: Optional[dict] = None
+    date_range_start: Optional[datetime] = None
+    date_range_end: Optional[datetime] = None
+    storage_location: str
+    file_size: Optional[int] = None
+    checksum: Optional[str] = None
+    encryption_used: bool
+    status: str
+    triggered_by: Optional[int] = None
+    trigger_type: str
+    error_message: Optional[str] = None
+    retention_period_days: Optional[int] = None
+    expires_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True

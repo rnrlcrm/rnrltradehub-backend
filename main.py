@@ -56,6 +56,10 @@ from routes_onboarding import router as onboarding_router
 from routes_amendments import router as amendment_router
 from routes_kyc import router as kyc_router
 from routes_scheduler import router as scheduler_router
+from routes_trade import router as trade_router
+from routes_inspection import router as inspection_router
+from routes_logistics import router as logistics_router
+from routes_ledger import router as ledger_router
 
 # Configure logging
 logging.basicConfig(
@@ -69,6 +73,11 @@ app = FastAPI(
     description="Backend API for RNRL TradeHub CRM system",
     version="1.0.0"
 )
+
+
+# Add security and rate limiting middleware
+from rate_limit_middleware import add_security_middleware
+add_security_middleware(app)
 
 
 # Custom exception handlers
@@ -217,6 +226,12 @@ app.include_router(onboarding_router)
 app.include_router(amendment_router)
 app.include_router(kyc_router)
 app.include_router(scheduler_router)
+
+# New ERP Modules (Phase 4-6)
+app.include_router(trade_router)
+app.include_router(inspection_router)
+app.include_router(logistics_router)
+app.include_router(ledger_router)
 
 
 @app.get("/")
