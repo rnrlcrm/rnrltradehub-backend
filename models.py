@@ -26,7 +26,39 @@ class TimestampMixin:
         return Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
 
-class CciTerm(Base, TimestampMixin):
+class SoftDeleteMixin:
+    """Mixin to add soft delete functionality."""
+
+    @declared_attr
+    def deleted_at(cls):
+        return Column(DateTime, nullable=True, index=True)
+
+    @declared_attr
+    def deleted_by(cls):
+        return Column(Integer, ForeignKey('users.id'), nullable=True)
+
+    @declared_attr
+    def is_deleted(cls):
+        return Column(Boolean, default=False, nullable=False, index=True)
+
+
+class VersionMixin:
+    """Mixin to add version tracking."""
+
+    @declared_attr
+    def version(cls):
+        return Column(Integer, default=1, nullable=False)
+
+    @declared_attr
+    def version_comment(cls):
+        return Column(Text, nullable=True)
+
+    @declared_attr
+    def last_modified_by(cls):
+        return Column(Integer, ForeignKey('users.id'), nullable=True)
+
+
+class CciTerm(Base, TimestampMixin, SoftDeleteMixin, VersionMixin):
     """CCI Terms configuration table."""
 
     __tablename__ = "cci_terms"
@@ -50,7 +82,7 @@ class CciTerm(Base, TimestampMixin):
     late_lifting_tier3_percent = Column(Float, nullable=False)
 
 
-class CommissionStructure(Base, TimestampMixin):
+class CommissionStructure(Base, TimestampMixin, SoftDeleteMixin, VersionMixin):
     """Commission structure configuration table."""
 
     __tablename__ = "commission_structures"
@@ -61,7 +93,7 @@ class CommissionStructure(Base, TimestampMixin):
     value = Column(Float, nullable=False)
 
 
-class GstRate(Base, TimestampMixin):
+class GstRate(Base, TimestampMixin, SoftDeleteMixin, VersionMixin):
     """GST rates configuration table."""
 
     __tablename__ = "gst_rates"
@@ -72,7 +104,7 @@ class GstRate(Base, TimestampMixin):
     hsn_code = Column(String(50), nullable=False)
 
 
-class Location(Base, TimestampMixin):
+class Location(Base, TimestampMixin, SoftDeleteMixin, VersionMixin):
     """Location master data table."""
 
     __tablename__ = "locations"
@@ -145,7 +177,7 @@ class Address(Base, TimestampMixin):
     business_partner = relationship("BusinessPartner", back_populates="shipping_addresses")
 
 
-class BusinessPartner(Base, TimestampMixin):
+class BusinessPartner(Base, TimestampMixin, SoftDeleteMixin, VersionMixin):
     """Business Partner (Vendor/Client/Agent) table."""
 
     __tablename__ = "business_partners"
@@ -372,7 +404,7 @@ class UserAuditLog(Base, TimestampMixin):
     user = relationship("User", backref="audit_logs")
 
 
-class MasterDataItem(Base, TimestampMixin):
+class MasterDataItem(Base, TimestampMixin, SoftDeleteMixin, VersionMixin):
     """Generic master data table for various configurations."""
 
     __tablename__ = "master_data_items"
@@ -433,7 +465,7 @@ class Permission(Base, TimestampMixin):
     role = relationship("Role", back_populates="permissions")
 
 
-class Setting(Base, TimestampMixin):
+class Setting(Base, TimestampMixin, SoftDeleteMixin, VersionMixin):
     """System settings and configuration."""
 
     __tablename__ = "settings"
