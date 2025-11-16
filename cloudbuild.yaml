@@ -4,6 +4,11 @@
 # - The database password is stored in Secret Manager as 'erp-nonprod-db-password'
 # - See DATABASE_CREDENTIALS_SETUP.md for complete setup instructions
 # - Update DB_NAME, DB_USER values below if your database configuration differs
+#
+# SMTP and Scheduler Configuration:
+# - SMTP_PASSWORD and CRON_SECRET are set as environment variables with default values
+# - To enable SMTP with secrets, see EMAIL_SCHEDULER_SETUP.md
+# - The --remove-secrets flag ensures any old secret references are cleared
 
 options:
   logging: CLOUD_LOGGING_ONLY
@@ -33,5 +38,6 @@ steps:
         '--service-account=502095789065-compute@developer.gserviceaccount.com',
         '--add-cloudsql-instances=google-mpf-cas7ishusxmu:us-central1:erp-nonprod-db',
         '--update-secrets=DB_PASSWORD=erp-nonprod-db-password:latest',
-        '--set-env-vars=DB_HOST=/cloudsql/google-mpf-cas7ishusxmu:us-central1:erp-nonprod-db,DB_NAME=erp_nonprod_db,DB_USER=postgres,DB_PORT=5432,SMTP_ENABLED=false,SMTP_HOST=smtp.gmail.com,SMTP_PORT=587,SMTP_FROM_EMAIL=noreply@rnrltradehub.com,SMTP_FROM_NAME=RNRL TradeHub'
+        '--remove-secrets=SMTP_PASSWORD,CRON_SECRET',
+        '--set-env-vars=DB_HOST=/cloudsql/google-mpf-cas7ishusxmu:us-central1:erp-nonprod-db,DB_NAME=erp_nonprod_db,DB_USER=postgres,DB_PORT=5432,SMTP_ENABLED=false,SMTP_HOST=smtp.gmail.com,SMTP_PORT=587,SMTP_FROM_EMAIL=noreply@rnrltradehub.com,SMTP_FROM_NAME=RNRL TradeHub,SMTP_PASSWORD=,CRON_SECRET=change-this-in-production'
       ]
