@@ -73,22 +73,22 @@ alembic upgrade head
 
 #### Linting with Pylint
 ```bash
-pylint main.py database.py models.py schemas.py routes.py
+pylint main.py database.py models.py schemas.py routes_*.py
 ```
 
 #### Code Style with Flake8
 ```bash
-flake8 main.py database.py models.py schemas.py routes.py
+flake8 main.py database.py models.py schemas.py routes_*.py
 ```
 
 #### Security Scanning with Bandit
 ```bash
-bandit -r main.py database.py models.py schemas.py routes.py
+bandit -r main.py database.py models.py schemas.py routes_*.py
 ```
 
 #### Auto-formatting with Black
 ```bash
-black main.py database.py models.py schemas.py routes.py
+black main.py database.py models.py schemas.py routes_*.py
 ```
 
 ### API Endpoints
