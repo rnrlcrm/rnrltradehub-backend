@@ -902,23 +902,6 @@ class SuspiciousActivityResponse(SuspiciousActivityBase):
         from_attributes = True
 
 
-# Sub-User Schemas
-class SubUserCreate(BaseModel):
-    sub_user_id: int
-
-
-class SubUserResponse(BaseModel):
-    id: str
-    parent_user_id: int
-    sub_user_id: int
-    is_active: bool
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
 # ============================================================================
 # TRADE DESK & CHATBOT SCHEMAS
 # ============================================================================
